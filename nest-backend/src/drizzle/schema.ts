@@ -10,6 +10,8 @@ export const users = mysqlTable('users', {
   traderName: varchar('trader_name', { length: 255 }),
   activo: boolean('activo').default(true),
   rememberToken: varchar('remember_token', { length: 100 }),
+  resetToken: varchar('reset_token', { length: 255 }),
+  resetTokenExpiry: timestamp('reset_token_expiry'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow().onUpdateNow(),
 });
