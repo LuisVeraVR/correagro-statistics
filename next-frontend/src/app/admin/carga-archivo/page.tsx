@@ -68,10 +68,10 @@ export default function CargaArchivoPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="h-6 w-6" />
-            Cargar Archivo de Transacciones
+            Cargar Archivo de Operaciones
           </CardTitle>
           <CardDescription>
-            Sube el archivo Excel (.xlsx) con las transacciones históricas o diarias.
+            Sube el archivo Excel (.xlsx) con las operaciones historicas o diarias.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -124,7 +124,7 @@ export default function CargaArchivoPage() {
               disabled={!file || uploading}
               className="w-full sm:w-auto"
             >
-              {uploading ? 'Procesando...' : 'Cargar Transacciones'}
+                {uploading ? 'Procesando...' : 'Cargar Operaciones'}
             </Button>
           </div>
         </CardContent>

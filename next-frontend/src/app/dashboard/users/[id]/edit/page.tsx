@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
 export default function EditUserPage() {
@@ -19,6 +19,7 @@ export default function EditUserPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const [formData, setFormData] = useState<UpdateUserDto>({
     name: '',
@@ -121,14 +122,26 @@ export default function EditUserPage() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="password">Contraseña (Dejar en blanco para mantener actual)</Label>
-              <Input
-                id="password"
-                type="password"
-                minLength={6}
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              />
+              <Label htmlFor="password">Contrasena (Dejar en blanco para mantener actual)</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  minLength={6}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <div className="grid gap-2">

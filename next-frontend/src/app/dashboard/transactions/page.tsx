@@ -62,7 +62,7 @@ export default function TransactionsPage() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight">Transacciones ORFS</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Operaciones ORFS</h1>
                 <Link href="/dashboard/transactions/create">
                     <Button>
                         <Plus className="mr-2 h-4 w-4" /> Nueva Operación
@@ -140,7 +140,7 @@ export default function TransactionsPage() {
                                         {transactions.length === 0 && (
                                             <tr>
                                                 <td colSpan={8} className="p-4 text-center text-muted-foreground">
-                                                    No se encontraron transacciones para el año {year}
+                                                    No se encontraron operaciones para el año {year}
                                                 </td>
                                             </tr>
                                         )}
@@ -156,7 +156,7 @@ export default function TransactionsPage() {
                                         <tr className="border-b">
                                             <th className="p-4 font-medium">Fecha</th>
                                             <th className="p-4 font-medium text-right">Total Negociado</th>
-                                            <th className="p-4 font-medium text-right">Cantidad Operaciones</th>
+                                            <th className="p-4 font-medium text-right">Cantidad de Operaciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -179,7 +179,7 @@ export default function TransactionsPage() {
                                         <tr className="border-b">
                                             <th className="p-4 font-medium">Rueda No.</th>
                                             <th className="p-4 font-medium text-right">Total Negociado</th>
-                                            <th className="p-4 font-medium text-right">Cantidad Operaciones</th>
+                                            <th className="p-4 font-medium text-right">Cantidad de Operaciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>

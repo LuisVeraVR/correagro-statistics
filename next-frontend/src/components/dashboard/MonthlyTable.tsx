@@ -42,7 +42,7 @@ export function MonthlyTable({ data, year }: MonthlyTableProps) {
                   Ruedas
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">
-                  Transacciones
+                  Operaciones
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">
                   Negociado

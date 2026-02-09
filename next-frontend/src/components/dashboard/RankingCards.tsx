@@ -111,7 +111,7 @@ export function RankingGrid({ rankings, widgets }: RankingGridProps) {
   const cards = [
     {
       key: "ranking_clientes_trans",
-      title: "Clientes por Transaccion",
+      title: "Clientes por Volumen",
       data: rankings.clients_by_volume,
       type: "currency" as const,
     },

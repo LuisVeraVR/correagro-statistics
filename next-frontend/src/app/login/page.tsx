@@ -6,12 +6,13 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Lock, UserCircle } from "lucide-react";
+import { Loader2, Lock, UserCircle, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -87,14 +88,15 @@ export default function LoginPage() {
             Panel de Estadisticas y Reportes
           </h2>
           <p className="text-lg text-white/60 leading-relaxed max-w-md">
+            La comisionista No. 1 de la Bolsa Mercantil de Colombia.
             Accede a datos en tiempo real, reportes detallados y analisis
-            avanzados del mercado agropecuario colombiano.
+            avanzados del mercado agropecuario.
           </p>
           <div className="flex gap-8 pt-4">
             <div>
               <div className="text-3xl font-bold text-primary">+500</div>
               <div className="text-sm text-white/40 mt-1">
-                Transacciones diarias
+                Operaciones diarias
               </div>
             </div>
             <div>
@@ -181,12 +183,25 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Contrasena"
                   required
                   disabled={loading}
-                  className="pl-10 h-11 bg-card border-border"
+                  className="pl-10 pr-10 h-11 bg-card border-border"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -214,7 +229,7 @@ export default function LoginPage() {
 
           <div className="pt-4 text-center">
             <p className="text-xs text-muted-foreground">
-              CORREAGRO S.A. - Comisionista de Bolsa Mercantil
+              CORREAGRO S.A. - Comisionista No. 1 de la Bolsa Mercantil de Colombia
             </p>
           </div>
         </div>

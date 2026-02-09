@@ -153,7 +153,7 @@ export default function BenchmarkPage() {
                         <Activity className="w-8 h-8 text-gray-700" />
                         Benchmark
                     </h1>
-                    <p className="text-gray-500">Ranking competitivo y foco en Correagro S.A.</p>
+                    <p className="text-gray-500">Ranking competitivo - Correagro S.A., comisionista No. 1 de la Bolsa Mercantil</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <label className="text-sm font-medium text-gray-700">Año:</label>

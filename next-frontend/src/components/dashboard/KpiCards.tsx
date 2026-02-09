@@ -81,7 +81,7 @@ export function KpiCards({ kpis, widgets }: KpiCardsProps) {
   const cards = [
     {
       key: "kpi_registros",
-      title: "Total Registros",
+      title: "Total Operaciones",
       value: kpis.total_transactions.toLocaleString("es-CO"),
       icon: FileText,
       accentClass: "text-primary",

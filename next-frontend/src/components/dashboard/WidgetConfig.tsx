@@ -62,7 +62,7 @@ export function WidgetConfig({ widgets, toggleWidget }: WidgetConfigProps) {
           <ConfigGroup
             title="KPIs"
             items={[
-              { id: "kpi_registros", label: "Total Registros" },
+              { id: "kpi_registros", label: "Total Operaciones" },
               { id: "kpi_negociado", label: "Total Negociado" },
               { id: "kpi_comision", label: "Total Comision" },
               { id: "kpi_ruedas", label: "Total Ruedas" },
@@ -73,7 +73,7 @@ export function WidgetConfig({ widgets, toggleWidget }: WidgetConfigProps) {
           <ConfigGroup
             title="Rankings"
             items={[
-              { id: "ranking_clientes_trans", label: "Clientes por Transaccion" },
+              { id: "ranking_clientes_trans", label: "Clientes por Volumen" },
               { id: "ranking_clientes_comi", label: "Clientes por Comision" },
               { id: "ranking_traders_comi", label: "Traders por Comision" },
               { id: "ranking_traders_vol", label: "Traders por Volumen" },

@@ -11,7 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Correagro S.A. | Panel de Estadisticas",
   description:
-    "Panel administrativo de estadisticas y reportes para Correagro S.A., comisionista de bolsa mercantil de Colombia.",
+    "Panel administrativo de estadisticas y reportes para Correagro S.A., comisionista No. 1 de la Bolsa Mercantil de Colombia.",
 };
 
 export const viewport: Viewport = {
