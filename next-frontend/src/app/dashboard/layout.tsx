@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Menu } from "lucide-react";
-import Image from "next/image";
-
 export default function DashboardLayout({
   children,
 }: {
@@ -50,12 +48,11 @@ export default function DashboardLayout({
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Image
+          <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Logo-Correagro-horizontal-0JBrWIjHBRFbepaFmd6S5eooMmQuv9.png"
             alt="Correagro S.A."
             width={130}
             height={33}
-            priority
           />
         </header>
 

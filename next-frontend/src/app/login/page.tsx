@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,13 +73,12 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10">
-          <Image
+          <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Logo-Correagro-horizontal-0JBrWIjHBRFbepaFmd6S5eooMmQuv9.png"
             alt="Correagro S.A."
             width={220}
             height={55}
             className="brightness-0 invert"
-            priority
           />
         </div>
 
@@ -124,12 +122,11 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-8">
           {/* Mobile Logo */}
           <div className="flex flex-col items-center space-y-4 lg:hidden">
-            <Image
+            <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Logo-Correagro-horizontal-0JBrWIjHBRFbepaFmd6S5eooMmQuv9.png"
               alt="Correagro S.A."
               width={180}
               height={45}
-              priority
             />
           </div>
 

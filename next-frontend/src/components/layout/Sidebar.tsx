@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -77,13 +76,12 @@ export function Sidebar({ className, onClose }: SidebarProps) {
       {/* Logo Header */}
       <div className="flex items-center justify-between px-5 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <Image
+          <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Logo-Correagro-horizontal-0JBrWIjHBRFbepaFmd6S5eooMmQuv9.png"
             alt="Correagro S.A."
             width={160}
             height={40}
             className="brightness-0 invert"
-            priority
           />
         </div>
         {onClose && (
