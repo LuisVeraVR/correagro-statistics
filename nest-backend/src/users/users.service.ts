@@ -1,0 +1,58 @@
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { DRIZZLE } from '../drizzle/drizzle.module';
+import { users } from '../drizzle/schema';
+import { eq, or } from 'drizzle-orm';
+import { MySql2Database } from 'drizzle-orm/mysql2';
+import * as schema from '../drizzle/schema';
+import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
+import * as bcrypt from 'bcryptjs';
+
+export type User = typeof users.$inferSelect;
+
+@Injectable()
+export class UsersService {
+  constructor(@Inject(DRIZZLE) private db: MySql2Database<typeof schema>) {}
+
+  async findOne(usernameOrEmail: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(
+      or(
+        eq(users.email, usernameOrEmail),
+        eq(users.name, usernameOrEmail)
+      )
+    );
+    return result[0];
+  }
+
+  async findById(id: number): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.id, id));
+    return result[0];
+  }
+
+  async findAll(): Promise<User[]> {
+    return this.db.select().from(users);
+  }
+
+  async create(createUserDto: CreateUserDto): Promise<void> {
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    await this.db.insert(users).values({
+      ...createUserDto,
+      password: hashedPassword,
+    });
+  }
+
+  async update(id: number, updateUserDto: UpdateUserDto): Promise<void> {
+    const user = await this.findById(id);
+    if (!user) throw new NotFoundException('User not found');
+
+    const updateData: any = { ...updateUserDto };
+    if (updateUserDto.password) {
+      updateData.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
+
+    await this.db.update(users).set(updateData).where(eq(users.id, id));
+  }
+
+  async remove(id: number): Promise<void> {
+    await this.db.delete(users).where(eq(users.id, id));
+  }
+}

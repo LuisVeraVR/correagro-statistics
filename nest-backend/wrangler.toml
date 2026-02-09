@@ -1,0 +1,11 @@
+name = "orfs-api"
+main = "dist/worker.js"
+compatibility_date = "2024-02-08"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "orfs-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+[vars]
+JWT_SECRET = "your-secret-key"
