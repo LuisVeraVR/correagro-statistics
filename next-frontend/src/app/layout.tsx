@@ -1,13 +1,23 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
-  title: "ORFS Estadísticas",
-  description: "Dashboard de Estadísticas",
+  title: "Correagro S.A. | Panel de Estadisticas",
+  description:
+    "Panel administrativo de estadisticas y reportes para Correagro S.A., comisionista de bolsa mercantil de Colombia.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#166534",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -16,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
-      <body className={inter.className}>
+    <html lang="es" className={inter.variable}>
+      <body className="font-sans">
         <Providers>{children}</Providers>
       </body>
     </html>
