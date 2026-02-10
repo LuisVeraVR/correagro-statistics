@@ -1,12 +1,14 @@
 import { Controller, Request, Post, UseGuards, Body, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
     private usersService: UsersService,
+    private mailService: MailService,
   ) {}
 
   @Post('login')
@@ -24,16 +26,12 @@ export class AuthController {
       throw new BadRequestException('El correo o usuario es requerido');
     }
     const result = await this.usersService.generateResetToken(body.email);
-    if (!result) {
-      // Return success even if user not found to prevent email enumeration
-      return { message: 'Si el usuario existe, se ha generado un codigo de recuperacion.' };
+    if (result) {
+      // Send email with the token
+      await this.mailService.sendPasswordResetEmail(result.email, result.token, result.userName);
     }
-    // In production, send the token via email. For now, return it directly.
-    return {
-      message: 'Codigo de recuperacion generado exitosamente.',
-      resetCode: result.token,
-      userName: result.userName,
-    };
+    // Return success even if user not found to prevent email enumeration
+    return { message: 'Si el usuario existe, se ha enviado un código de recuperación a su correo.' };
   }
 
   @Post('reset-password')

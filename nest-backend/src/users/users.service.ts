@@ -57,7 +57,7 @@ export class UsersService {
     await this.db.delete(users).where(eq(users.id, id));
   }
 
-  async generateResetToken(email: string): Promise<{ token: string; userName: string } | null> {
+  async generateResetToken(email: string): Promise<{ token: string; userName: string; email: string } | null> {
     const user = await this.findOne(email);
     if (!user) return null;
 
@@ -69,7 +69,7 @@ export class UsersService {
       resetTokenExpiry: expiry,
     }).where(eq(users.id, user.id));
 
-    return { token, userName: user.name };
+    return { token, userName: user.name, email: user.email };
   }
 
   async validateResetToken(email: string, token: string): Promise<boolean> {

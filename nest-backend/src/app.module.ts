@@ -8,6 +8,7 @@ import { TradersModule } from './traders/traders.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { ReportsModule } from './reports/reports.module';
 import { BenchmarkModule } from './benchmark/benchmark.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { BenchmarkModule } from './benchmark/benchmark.module';
     TransactionsModule,
     ReportsModule,
     BenchmarkModule,
+    MailModule,
   ],
   controllers: [],
   providers: [],
