@@ -1,4 +1,4 @@
-import { Controller, Request, Post, UseGuards, Body, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Controller, Request, Post, UseGuards, Body, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { MailService } from '../mail/mail.service';
@@ -47,5 +47,26 @@ export class AuthController {
       throw new BadRequestException('Codigo invalido o expirado');
     }
     return { message: 'Contrasena actualizada exitosamente.' };
+  }
+
+  @Post('seed')
+  async seed() {
+    const existing = await this.usersService.findOne('admin');
+    if (existing) {
+      throw new ConflictException('El usuario admin ya existe. Usa admin / admin123 para ingresar.');
+    }
+    await this.usersService.create({
+      name: 'admin',
+      email: 'admin@correagro.com',
+      password: 'admin123',
+      role: 'admin',
+    });
+    return {
+      message: 'Usuario admin creado exitosamente.',
+      credentials: {
+        usuario: 'admin',
+        contrasena: 'admin123',
+      },
+    };
   }
 }
