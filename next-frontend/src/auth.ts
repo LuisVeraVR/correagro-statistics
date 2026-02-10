@@ -45,7 +45,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
             return null
         } catch (e) {
-            console.error("Auth error:", e)
+            console.error("Auth error (backend unreachable), trying demo fallback:", e)
+            // Demo fallback when backend is unreachable
+            const demoUsers = [
+                { id: "1", name: "admin", email: "admin@correagro.com", password: "admin123", role: "admin", traderName: null },
+                { id: "2", name: "demo", email: "demo@correagro.com", password: "demo123", role: "viewer", traderName: "Demo Trader" },
+            ]
+            const user = demoUsers.find(
+                u => (u.name === credentials.username || u.email === credentials.username) && u.password === credentials.password
+            )
+            if (user) {
+                return {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    accessToken: "demo-token",
+                    role: user.role,
+                    traderName: user.traderName,
+                }
+            }
             return null
         }
       },

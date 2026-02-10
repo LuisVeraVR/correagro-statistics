@@ -17,7 +17,6 @@ import {
   KeyRound,
   CheckCircle2,
   ShieldCheck,
-  UserPlus,
 } from "lucide-react";
 
 type ViewState = "login" | "request-code" | "reset-password" | "success";
@@ -45,42 +44,8 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
 
-  // Seed state
-  const [seedLoading, setSeedLoading] = useState(false);
-  const [seedResult, setSeedResult] = useState<{ message: string; isError: boolean } | null>(null);
-
   const API_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
-
-  async function handleSeed() {
-    setSeedLoading(true);
-    setSeedResult(null);
-    try {
-      const res = await fetch(`${API_URL}/auth/seed`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSeedResult({
-          message: `Usuario creado: admin / admin123`,
-          isError: false,
-        });
-      } else {
-        setSeedResult({
-          message: data.message || "El usuario admin ya existe. Usa admin / admin123",
-          isError: false,
-        });
-      }
-    } catch {
-      setSeedResult({
-        message: "Error de conexion con el backend.",
-        isError: true,
-      });
-    } finally {
-      setSeedLoading(false);
-    }
-  }
 
   const changeView = useCallback((newView: ViewState) => {
     setView(newView);
@@ -350,39 +315,17 @@ export default function LoginPage() {
               </div>
             </form>
 
-            {/* Seed user helper */}
-            <div className="space-y-3 animate-fade-in stagger-5">
-              {seedResult && (
-                <div
-                  className={`rounded-lg border p-3 text-center animate-scale-in ${
-                    seedResult.isError
-                      ? "border-destructive/20 bg-destructive/5"
-                      : "border-primary/20 bg-primary/5"
-                  }`}
-                >
-                  <p
-                    className={`text-sm font-medium ${
-                      seedResult.isError ? "text-destructive" : "text-primary"
-                    }`}
-                  >
-                    {seedResult.message}
-                  </p>
+            {/* Demo credentials hint */}
+            <div className="animate-fade-in stagger-5">
+              <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground text-center mb-1.5">
+                  Credenciales de demo
+                </p>
+                <div className="flex items-center justify-center gap-4">
+                  <span className="text-xs font-mono text-foreground/70">
+                    admin / admin123
+                  </span>
                 </div>
-              )}
-              <div className="flex items-center justify-center">
-                <button
-                  type="button"
-                  onClick={handleSeed}
-                  disabled={seedLoading}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-200 disabled:opacity-50"
-                >
-                  {seedLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <UserPlus className="h-3 w-3" />
-                  )}
-                  Crear usuario de prueba
-                </button>
               </div>
             </div>
 
