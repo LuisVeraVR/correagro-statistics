@@ -1,6 +1,11 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 
+const DEMO_USERS = [
+    { id: "1", name: "admin", email: "admin@correagro.com", password: "admin123", role: "admin", traderName: null },
+    { id: "2", name: "demo", email: "demo@correagro.com", password: "demo123", role: "viewer", traderName: "Demo Trader" },
+]
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -10,13 +15,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Contraseña", type: "password" }
       },
       authorize: async (credentials) => {
+        console.log("[v0] authorize called with:", credentials?.username)
         if (!credentials?.username || !credentials?.password) {
             return null
         }
+
+        // 1. Try demo users first (always available, no backend needed)
+        const demoUser = DEMO_USERS.find(
+            u => (u.name === credentials.username || u.email === credentials.username) && u.password === credentials.password
+        )
+        if (demoUser) {
+            console.log("[v0] authorize: demo user matched:", demoUser.name)
+            return {
+                id: demoUser.id,
+                name: demoUser.name,
+                email: demoUser.email,
+                accessToken: "demo-token",
+                role: demoUser.role,
+                traderName: demoUser.traderName,
+            }
+        }
         
+        // 2. Try backend API
         try {
-            // Call NestJS Backend
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+            const controller = new AbortController()
+            const timeout = setTimeout(() => controller.abort(), 5000)
+
             const res = await fetch(`${apiUrl}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -24,10 +49,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     username: credentials.username,
                     password: credentials.password,
                 }),
+                signal: controller.signal,
             })
+            clearTimeout(timeout)
 
             if (!res.ok) {
-                console.error("Login failed:", res.status, res.statusText)
+                console.log("[v0] authorize: backend returned", res.status)
                 return null
             }
 
@@ -45,25 +72,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
             return null
         } catch (e) {
-            console.error("Auth error (backend unreachable), trying demo fallback:", e)
-            // Demo fallback when backend is unreachable
-            const demoUsers = [
-                { id: "1", name: "admin", email: "admin@correagro.com", password: "admin123", role: "admin", traderName: null },
-                { id: "2", name: "demo", email: "demo@correagro.com", password: "demo123", role: "viewer", traderName: "Demo Trader" },
-            ]
-            const user = demoUsers.find(
-                u => (u.name === credentials.username || u.email === credentials.username) && u.password === credentials.password
-            )
-            if (user) {
-                return {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    accessToken: "demo-token",
-                    role: user.role,
-                    traderName: user.traderName,
-                }
-            }
+            console.log("[v0] authorize: backend unreachable:", (e as Error)?.message)
             return null
         }
       },
@@ -93,5 +102,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
       strategy: "jwt",
   },
-  secret: process.env.AUTH_SECRET || "secret",
+  trustHost: true,
+  secret: process.env.AUTH_SECRET || "correagro-secret-key-2024",
 })

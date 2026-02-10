@@ -62,23 +62,42 @@ export default function LoginPage() {
     const password = formData.get("password") as string;
 
     try {
+      console.log("[v0] Attempting signIn with username:", email);
       const result = await signIn("credentials", {
         username: email,
         password: password,
         redirect: false,
       });
+      console.log("[v0] signIn result:", JSON.stringify(result));
 
       if (result?.error) {
+        console.log("[v0] signIn error:", result.error, "status:", result.status);
         setError(
           "Credenciales invalidas. Verifica tu usuario y contrasena."
         );
         setErrorKey((k) => k + 1);
-      } else {
+      } else if (result?.ok) {
+        console.log("[v0] signIn success, redirecting to dashboard");
         router.push("/dashboard");
         router.refresh();
+      } else if (result?.url) {
+        // NextAuth v5 beta sometimes returns url on success
+        console.log("[v0] signIn returned url:", result.url);
+        router.push("/dashboard");
+        router.refresh();
+      } else {
+        console.log("[v0] signIn returned unexpected result:", result);
+        setError("Error inesperado al iniciar sesion.");
+        setErrorKey((k) => k + 1);
       }
-    } catch {
-      setError("Error al iniciar sesion.");
+    } catch (err: any) {
+      console.log("[v0] signIn caught exception:", err?.message || err, "type:", err?.type || err?.name);
+      // NextAuth v5 beta throws CredentialsSignin error instead of returning it
+      if (err?.message?.includes("CredentialsSignin") || err?.type === "CredentialsSignin") {
+        setError("Credenciales invalidas. Verifica tu usuario y contrasena.");
+      } else {
+        setError("Error al iniciar sesion. Verifica tus credenciales.");
+      }
       setErrorKey((k) => k + 1);
     } finally {
       setLoading(false);
