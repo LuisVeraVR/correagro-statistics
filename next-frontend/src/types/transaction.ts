@@ -45,4 +45,4 @@ export interface CreateTransactionDto {
   year: number;
 }
 
-export interface UpdateTransactionDto extends Partial<CreateTransactionDto> {}
+export type UpdateTransactionDto = Partial<CreateTransactionDto>;
