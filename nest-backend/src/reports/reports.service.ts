@@ -52,7 +52,7 @@ export class ReportsService {
      const kpisResult = await this.db
         .select({
             totalVolume: sql<number>`sum(${transactions.negociado})`,
-            totalCommission: sql<number>`sum(${transactions.comiBna})`,
+            totalCommission: sql<number>`sum(${transactions.comiCorr})`,
             uniqueClients: sql<number>`count(distinct ${transactions.nombre})`,
             uniqueTraders: sql<number>`count(distinct ${transactions.corredor})`
         })
@@ -75,7 +75,7 @@ export class ReportsService {
         .select({
             corredor: transactions.corredor,
             volumen: sql<number>`sum(${transactions.negociado})`,
-            comision: sql<number>`sum(${transactions.comiBna})`,
+            comision: sql<number>`sum(${transactions.comiCorr})`,
             clientsCount: sql<number>`count(distinct ${transactions.nombre})`
         })
         .from(transactions)

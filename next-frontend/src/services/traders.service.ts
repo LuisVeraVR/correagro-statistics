@@ -1,4 +1,5 @@
 import { CreateTraderDto, UpdateTraderDto, Trader } from "@/types/trader";
+import { handleAuthError } from "@/utils/auth-helper";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -8,6 +9,7 @@ export const getTraders = async (token: string): Promise<Trader[]> => {
       Authorization: `Bearer ${token}`,
     },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch traders');
   return res.json();
 };
@@ -18,6 +20,7 @@ export const getTrader = async (token: string, id: number): Promise<Trader> => {
       Authorization: `Bearer ${token}`,
     },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch trader');
   return res.json();
 };
@@ -31,6 +34,7 @@ export const createTrader = async (token: string, data: CreateTraderDto): Promis
     },
     body: JSON.stringify(data),
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to create trader');
 };
 
@@ -43,6 +47,7 @@ export const updateTrader = async (token: string, id: number, data: UpdateTrader
     },
     body: JSON.stringify(data),
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to update trader');
 };
 
@@ -53,6 +58,7 @@ export const deleteTrader = async (token: string, id: number): Promise<void> => 
       Authorization: `Bearer ${token}`,
     },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to delete trader');
 };
 
@@ -62,6 +68,7 @@ export const getTraderAdicionales = async (token: string, id: number): Promise<{
       Authorization: `Bearer ${token}`,
     },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch trader adicionales');
   return res.json();
 };
@@ -75,6 +82,7 @@ export const addTraderAdicional = async (token: string, id: number, nombreAdicio
     },
     body: JSON.stringify({ nombreAdicional }),
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to add trader adicional');
 };
 
@@ -85,5 +93,6 @@ export const deleteTraderAdicional = async (token: string, id: number): Promise<
       Authorization: `Bearer ${token}`,
     },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to delete trader adicional');
 };

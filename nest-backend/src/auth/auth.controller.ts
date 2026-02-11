@@ -48,25 +48,4 @@ export class AuthController {
     }
     return { message: 'Contrasena actualizada exitosamente.' };
   }
-
-  @Post('seed')
-  async seed() {
-    const existing = await this.usersService.findOne('admin');
-    if (existing) {
-      throw new ConflictException('El usuario admin ya existe. Usa admin / admin123 para ingresar.');
-    }
-    await this.usersService.create({
-      name: 'admin',
-      email: 'admin@correagro.com',
-      password: 'admin123',
-      role: 'admin',
-    });
-    return {
-      message: 'Usuario admin creado exitosamente.',
-      credentials: {
-        usuario: 'admin',
-        contrasena: 'admin123',
-      },
-    };
-  }
 }

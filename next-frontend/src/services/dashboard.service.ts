@@ -1,4 +1,5 @@
 import { DashboardSummary } from "@/types/dashboard";
+import { handleAuthError } from "@/utils/auth-helper";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -8,6 +9,8 @@ export const getDashboardSummary = async (token: string, year: number, withGroup
             Authorization: `Bearer ${token}`,
         },
     });
+
+    handleAuthError(res);
 
     if (!res.ok) {
         throw new Error('Failed to fetch dashboard summary');
@@ -22,6 +25,8 @@ export const getDashboardLayout = async (token: string, userId: number): Promise
             Authorization: `Bearer ${token}`,
         },
     });
+
+    handleAuthError(res);
 
     if (!res.ok) {
         throw new Error('Failed to fetch dashboard layout');
@@ -39,6 +44,8 @@ export const saveDashboardLayout = async (token: string, userId: number, layout:
         },
         body: JSON.stringify(layout),
     });
+
+    handleAuthError(res);
 
     if (!res.ok) {
         throw new Error('Failed to save dashboard layout');

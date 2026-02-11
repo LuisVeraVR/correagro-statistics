@@ -1,4 +1,5 @@
 import { CreateTransactionDto, UpdateTransactionDto, Transaction } from "@/types/transaction";
+import { handleAuthError } from "@/utils/auth-helper";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -12,6 +13,7 @@ export const getTransactions = async (token: string, year?: number): Promise<Tra
       Authorization: `Bearer ${token}`,
     },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch transactions');
   return res.json();
 };
@@ -22,6 +24,7 @@ export const getTransaction = async (token: string, id: number): Promise<Transac
       Authorization: `Bearer ${token}`,
     },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch transaction');
   return res.json();
 };
@@ -35,6 +38,7 @@ export const createTransaction = async (token: string, data: CreateTransactionDt
     },
     body: JSON.stringify(data),
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to create transaction');
 };
 
@@ -47,6 +51,7 @@ export const updateTransaction = async (token: string, id: number, data: UpdateT
     },
     body: JSON.stringify(data),
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to update transaction');
 };
 
@@ -57,6 +62,7 @@ export const deleteTransaction = async (token: string, id: number): Promise<void
       Authorization: `Bearer ${token}`,
     },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to delete transaction');
 };
 
@@ -68,6 +74,7 @@ export const getDailySummary = async (token: string, year: number, month?: strin
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch daily summary');
   return res.json();
 };
@@ -76,6 +83,7 @@ export const getRuedasSummary = async (token: string, year: number): Promise<any
   const res = await fetch(`${API_URL}/transactions/summary/ruedas?year=${year}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch ruedas summary');
   return res.json();
 };
@@ -84,6 +92,7 @@ export const getMarginReport = async (token: string, year: number): Promise<any[
   const res = await fetch(`${API_URL}/transactions/reports/margin?year=${year}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch margin report');
   return res.json();
 };

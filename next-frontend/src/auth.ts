@@ -1,11 +1,6 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 
-const DEMO_USERS = [
-    { id: "1", name: "admin", email: "admin@correagro.com", password: "admin123", role: "admin", traderName: null },
-    { id: "2", name: "demo", email: "demo@correagro.com", password: "demo123", role: "viewer", traderName: "Demo Trader" },
-]
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -19,24 +14,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!credentials?.username || !credentials?.password) {
             return null
         }
-
-        // 1. Try demo users first (always available, no backend needed)
-        const demoUser = DEMO_USERS.find(
-            u => (u.name === credentials.username || u.email === credentials.username) && u.password === credentials.password
-        )
-        if (demoUser) {
-            console.log("[v0] authorize: demo user matched:", demoUser.name)
-            return {
-                id: demoUser.id,
-                name: demoUser.name,
-                email: demoUser.email,
-                accessToken: "demo-token",
-                role: demoUser.role,
-                traderName: demoUser.traderName,
-            }
-        }
         
-        // 2. Try backend API
+        // Try backend API
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
             const controller = new AbortController()

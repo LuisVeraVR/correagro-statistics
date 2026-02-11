@@ -15,6 +15,19 @@ export class DashboardController {
     return this.dashboardService.getSummary(year || new Date().getFullYear(), withGroups, user);
   }
 
+  @Get('ranking')
+  async getRanking(
+    @Query('type') type: string,
+    @Query('order') order: 'asc' | 'desc',
+    @Query('year') year: number,
+    @Query('withGroups') withGroupsStr: string,
+    @Request() req
+  ) {
+    const user = req.user;
+    const withGroups = withGroupsStr !== 'false';
+    return this.dashboardService.getRanking(type, order, year || new Date().getFullYear(), user, withGroups);
+  }
+
   @Get('layout')
   async getLayout(@Request() req) {
     const user = req.user;

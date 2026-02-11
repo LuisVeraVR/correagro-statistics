@@ -1,3 +1,5 @@
+import { handleAuthError } from "@/utils/auth-helper";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface BenchmarkSummary {
@@ -33,6 +35,7 @@ export const getBenchmarkSummary = async (token: string, year: number): Promise<
     const res = await fetch(`${API_URL}/benchmark/summary?year=${year}`, {
         headers: { Authorization: `Bearer ${token}` },
     });
+    handleAuthError(res);
     if (!res.ok) throw new Error('Failed to fetch summary');
     return res.json();
 };
@@ -41,6 +44,7 @@ export const getBenchmarkRanking = async (token: string, year: number, month: st
     const res = await fetch(`${API_URL}/benchmark/ranking?year=${year}&month=${month}&limit=${limit}`, {
         headers: { Authorization: `Bearer ${token}` },
     });
+    handleAuthError(res);
     if (!res.ok) throw new Error('Failed to fetch ranking');
     return res.json();
 };
@@ -49,6 +53,7 @@ export const getBenchmarkTrends = async (token: string, year: number): Promise<T
     const res = await fetch(`${API_URL}/benchmark/trends?year=${year}`, {
         headers: { Authorization: `Bearer ${token}` },
     });
+    handleAuthError(res);
     if (!res.ok) throw new Error('Failed to fetch trends');
     return res.json();
 };
@@ -57,6 +62,7 @@ export const getCorreagroStats = async (token: string, year: number): Promise<Co
     const res = await fetch(`${API_URL}/benchmark/correagro?year=${year}`, {
         headers: { Authorization: `Bearer ${token}` },
     });
+    handleAuthError(res);
     if (!res.ok) throw new Error('Failed to fetch correagro stats');
     return res.json();
 };
@@ -69,10 +75,12 @@ export interface ComparisonData {
 }
 
 export const getBenchmarkComparison = async (token: string, traders: string[], period: number): Promise<ComparisonData> => {
-    const response = await fetch(`${API_URL}/benchmark/compare?ids=${traders.join(',')}&period=${period}`, {
+    const res = await fetch(`${API_URL}/benchmark/compare?ids=${traders.join(',')}&period=${period}`, {
         headers: { Authorization: `Bearer ${token}` }
     });
-    return response.json();
+    handleAuthError(res);
+    if (!res.ok) throw new Error('Failed to fetch benchmark comparison');
+    return res.json();
 };
 
 export const getBenchmarkSectors = async (token: string, year: number) => {
@@ -80,6 +88,7 @@ export const getBenchmarkSectors = async (token: string, year: number) => {
     const res = await fetch(`${API_URL}/benchmark/sectors?year=${year}`, {
         headers: { Authorization: `Bearer ${token}` },
     });
+    handleAuthError(res);
     if (!res.ok) throw new Error('Failed to fetch sectors');
     return res.json();
 };
@@ -88,6 +97,7 @@ export const getBenchmarkProducts = async (token: string, year: number) => {
     const res = await fetch(`${API_URL}/benchmark/products?year=${year}`, {
         headers: { Authorization: `Bearer ${token}` },
     });
+    handleAuthError(res);
     if (!res.ok) throw new Error('Failed to fetch products');
     return res.json();
 };

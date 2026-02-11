@@ -334,19 +334,7 @@ export default function LoginPage() {
               </div>
             </form>
 
-            {/* Demo credentials hint */}
-            <div className="animate-fade-in stagger-5">
-              <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground text-center mb-1.5">
-                  Credenciales de demo
-                </p>
-                <div className="flex items-center justify-center gap-4">
-                  <span className="text-xs font-mono text-foreground/70">
-                    admin / admin123
-                  </span>
-                </div>
-              </div>
-            </div>
+
 
             <div className="pt-2 text-center animate-fade-in stagger-6">
               <p className="text-xs text-muted-foreground">

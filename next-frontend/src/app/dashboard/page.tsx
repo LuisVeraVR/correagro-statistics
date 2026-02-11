@@ -176,7 +176,7 @@ export default function DashboardPage() {
       )}
 
       {/* Rankings */}
-      <RankingGrid rankings={data.rankings} widgets={widgets} />
+      <RankingGrid rankings={data.rankings} widgets={widgets} year={year} withGroups={withGroups} />
 
       {/* Monthly Summary Table */}
       {widgets.resumen_mensual && (
