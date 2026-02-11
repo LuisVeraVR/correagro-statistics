@@ -10,7 +10,7 @@ import {
   FileSpreadsheet,
   X,
   Loader2,
-  CloudUpload,
+  UploadCloud,
   CalendarDays,
   History,
   Info,
@@ -228,10 +228,10 @@ export default function CargaArchivoPage() {
             >
               {!file ? (
                 <>
-                  <div className={`rounded-xl p-4 mb-4 ${
+                  <div className={`p-4 rounded-full transition-colors ${
                     mode === 'daily' ? 'bg-muted' : 'bg-amber-500/10'
                   }`}>
-                    <CloudUpload className={`h-8 w-8 ${
+                    <UploadCloud className={`h-8 w-8 ${
                       mode === 'daily' ? 'text-muted-foreground' : 'text-amber-600'
                     }`} />
                   </div>

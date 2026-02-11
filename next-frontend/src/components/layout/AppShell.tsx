@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="fixed inset-0 flex overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <aside
         className="hidden md:block shrink-0 transition-all duration-300 ease-in-out"

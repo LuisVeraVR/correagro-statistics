@@ -1,19 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { createUser } from '@/services/users.service';
 import { UserRole } from '@/types/user';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import Link from 'next/link';
+import { Eye, EyeOff } from 'lucide-react';
 
-export default function CreateUserPage() {
-  const router = useRouter();
+interface CreateUserModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: () => void;
+}
+
+export function CreateUserModal({ open, onOpenChange, onCreated }: CreateUserModalProps) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,6 +31,19 @@ export default function CreateUserPage() {
     activo: true
   });
 
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      role: 'guest',
+      traderName: '',
+      activo: true
+    });
+    setError('');
+    setShowPassword(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -35,70 +51,65 @@ export default function CreateUserPage() {
 
     try {
       await createUser(session?.user?.accessToken as string, formData);
-      router.push('/dashboard/users');
-      router.refresh();
-    } catch (err) {
+      resetForm();
+      onCreated();
+      onOpenChange(false);
+    } catch {
       setError('Error al crear usuario. Verifique los datos.');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/users">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Volver
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Crear Nuevo Usuario</h1>
-      </div>
-
-      <Card>
-        <CardHeader>
-            <CardTitle>Detalles del Usuario</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+      <DialogContent onClose={() => { resetForm(); onOpenChange(false); }} className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Nuevo Usuario</DialogTitle>
+          <DialogDescription>Ingresa los datos del nuevo usuario del sistema.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <DialogBody className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
+              <div className="rounded-lg bg-destructive/10 text-destructive px-4 py-2.5 text-sm">
                 {error}
               </div>
             )}
-
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nombre Completo</Label>
+            
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-name">Nombre Completo</Label>
               <Input
-                id="name"
+                id="create-name"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Nombre del usuario"
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-email">Email</Label>
               <Input
-                id="email"
+                id="create-email"
                 type="email"
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="usuario@ejemplo.com"
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="password">Contrasena</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-password">Contraseña</Label>
               <div className="relative">
                 <Input
-                  id="password"
+                  id="create-password"
                   type={showPassword ? "text" : "password"}
                   required
                   minLength={6}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Mínimo 6 caracteres"
                   className="pr-10"
                 />
                 <button
@@ -106,17 +117,17 @@ export default function CreateUserPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   tabIndex={-1}
-                  aria-label={showPassword ? "Ocultar contrasena" : "Mostrar contrasena"}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="role">Rol</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-role">Rol</Label>
               <select
-                id="role"
+                id="create-role"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
@@ -129,10 +140,10 @@ export default function CreateUserPage() {
             </div>
 
             {formData.role === 'trader' && (
-              <div className="grid gap-2">
-                <Label htmlFor="traderName">Nombre de Trader (para reportes)</Label>
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-traderName">Nombre de Trader (para reportes)</Label>
                 <Input
-                  id="traderName"
+                  id="create-traderName"
                   value={formData.traderName}
                   onChange={(e) => setFormData({ ...formData, traderName: e.target.value })}
                   placeholder="Ej: LUIS FERNANDO VELEZ VELEZ"
@@ -140,28 +151,27 @@ export default function CreateUserPage() {
               </div>
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/30 px-4 py-3">
               <input
                 type="checkbox"
-                id="activo"
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                id="create-activo"
+                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
                 checked={formData.activo}
                 onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
               />
-              <Label htmlFor="activo">Usuario Activo</Label>
+              <Label htmlFor="create-activo" className="cursor-pointer font-medium">Usuario Activo</Label>
             </div>
-
-            <div className="flex justify-end gap-4 pt-4">
-              <Link href="/dashboard/users">
-                <Button variant="outline" type="button">Cancelar</Button>
-              </Link>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Guardando...' : 'Guardar Usuario'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          </DialogBody>
+          <div className="flex justify-end gap-3 p-6 pt-2">
+            <Button variant="outline" type="button" onClick={() => { resetForm(); onOpenChange(false); }}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Guardando...' : 'Guardar Usuario'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

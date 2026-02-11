@@ -1,19 +1,47 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { User } from '@/types/user';
 import { getUsers, deleteUser } from '@/services/users.service';
-import Link from 'next/link';
-import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { CreateUserModal } from '@/components/users/CreateUserModal';
+import { EditUserModal } from '@/components/users/EditUserModal';
+import {
+  Plus,
+  Edit,
+  Trash,
+  Search,
+  Users,
+  UserCheck,
+  UserX,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  ShieldAlert,
+  ShieldCheck,
+  Briefcase
+} from 'lucide-react';
+
+const PAGE_SIZE = 12;
 
 export default function UsersPage() {
   const { data: session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+
+  // Filters
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [page, setPage] = useState(1);
+
+  // Modals
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (session?.user?.accessToken) {
@@ -22,13 +50,12 @@ export default function UsersPage() {
   }, [session]);
 
   const loadUsers = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const data = await getUsers(session?.user?.accessToken as string);
       setUsers(data);
-    } catch (err) {
-      setError('Error al cargar usuarios');
-      console.error(err);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -36,97 +63,309 @@ export default function UsersPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
-    
+    setDeletingId(id);
     try {
       await deleteUser(session?.user?.accessToken as string, id);
       loadUsers();
-    } catch (err) {
+    } catch {
       alert('Error al eliminar usuario');
+    } finally {
+      setDeletingId(null);
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
+  const openEdit = (id: number) => {
+    setEditId(id);
+    setEditOpen(true);
+  };
+
+  // Filtered + paginated data
+  const filtered = useMemo(() => {
+    let result = users;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) ||
+          u.email.toLowerCase().includes(q)
+      );
+    }
+    if (statusFilter === 'active') result = result.filter((u) => u.activo);
+    if (statusFilter === 'inactive') result = result.filter((u) => !u.activo);
+    return result;
+  }, [users, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+
+  // Stats
+  const activeCount = users.filter((u) => u.activo).length;
+  const inactiveCount = users.filter((u) => !u.activo).length;
+
+  const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'admin': return 'bg-blue-100 text-blue-800';
-      case 'trader': return 'bg-green-100 text-green-800';
-      case 'business_intelligence': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'admin':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700">
+            <ShieldAlert className="h-3 w-3" /> Admin
+          </span>
+        );
+      case 'trader':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+            <Briefcase className="h-3 w-3" /> Trader
+          </span>
+        );
+      case 'business_intelligence':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
+            <ShieldCheck className="h-3 w-3" /> BI
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
+            Invitado
+          </span>
+        );
     }
   };
-
-  if (loading) return <div className="p-8 text-center">Cargando usuarios...</div>;
-  if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 min-h-0">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Gestión de Usuarios</h1>
-          <p className="text-gray-500">Administrar usuarios del sistema</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Gestión de Usuarios</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Administra los usuarios y sus permisos de acceso
+          </p>
         </div>
-        <Link href="/dashboard/users/create">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Usuario
-          </Button>
-        </Link>
+        <Button onClick={() => setCreateOpen(true)} className="shrink-0">
+          <Plus className="mr-2 h-4 w-4" /> Nuevo Usuario
+        </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3">ID</th>
-                  <th className="px-6 py-3">Nombre</th>
-                  <th className="px-6 py-3">Email</th>
-                  <th className="px-6 py-3">Rol</th>
-                  <th className="px-6 py-3">Trader Asignado</th>
-                  <th className="px-6 py-3">Estado</th>
-                  <th className="px-6 py-3">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4">{user.id}</td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{user.name}</td>
-                    <td className="px-6 py-4">{user.email}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">{user.traderName || '-'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.activo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {user.activo ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 flex gap-2">
-                      <Link href={`/dashboard/users/${user.id}/edit`}>
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(user.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-                {users.length === 0 && (
-                    <tr>
-                        <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                            No hay usuarios registrados
-                        </td>
-                    </tr>
-                )}
-              </tbody>
-            </table>
+      {/* Stats + Search row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`flex items-center gap-4 rounded-xl border p-4 transition-all duration-200 hover:shadow-sm h-[76px] ${
+            statusFilter === 'all' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card'
+          }`}
+        >
+          <div className={`rounded-lg p-2.5 shrink-0 ${statusFilter === 'all' ? 'bg-primary/10' : 'bg-muted'}`}>
+            <Users className={`h-5 w-5 ${statusFilter === 'all' ? 'text-primary' : 'text-muted-foreground'}`} />
           </div>
+          <div className="text-left">
+            <p className="text-2xl font-bold text-foreground">{users.length}</p>
+            <p className="text-xs text-muted-foreground">Total Usuarios</p>
+          </div>
+        </button>
+        <button
+          onClick={() => setStatusFilter('active')}
+          className={`flex items-center gap-4 rounded-xl border p-4 transition-all duration-200 hover:shadow-sm h-[76px] ${
+            statusFilter === 'active' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card'
+          }`}
+        >
+          <div className={`rounded-lg p-2.5 shrink-0 ${statusFilter === 'active' ? 'bg-primary/10' : 'bg-muted'}`}>
+            <UserCheck className={`h-5 w-5 ${statusFilter === 'active' ? 'text-primary' : 'text-muted-foreground'}`} />
+          </div>
+          <div className="text-left">
+            <p className="text-2xl font-bold text-foreground">{activeCount}</p>
+            <p className="text-xs text-muted-foreground">Activos</p>
+          </div>
+        </button>
+        <button
+          onClick={() => setStatusFilter('inactive')}
+          className={`flex items-center gap-4 rounded-xl border p-4 transition-all duration-200 hover:shadow-sm h-[76px] ${
+            statusFilter === 'inactive' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card'
+          }`}
+        >
+          <div className={`rounded-lg p-2.5 shrink-0 ${statusFilter === 'inactive' ? 'bg-primary/10' : 'bg-muted'}`}>
+            <UserX className={`h-5 w-5 ${statusFilter === 'inactive' ? 'text-primary' : 'text-muted-foreground'}`} />
+          </div>
+          <div className="text-left">
+            <p className="text-2xl font-bold text-foreground">{inactiveCount}</p>
+            <p className="text-xs text-muted-foreground">Inactivos</p>
+          </div>
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nombre o email..."
+          className="pl-10 h-10 bg-card border-border"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* Table */}
+      <Card className="min-h-0">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center h-[400px]">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto min-h-[300px]">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40">
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nombre</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Rol</th>
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Estado</th>
+                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginated.map((user) => (
+                      <tr
+                        key={user.id}
+                        className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                      >
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-medium text-foreground">{user.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 text-muted-foreground">
+                          {user.email}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          {getRoleBadge(user.role)}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              user.activo
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-destructive/10 text-destructive'
+                            }`}
+                          >
+                            <span className={`h-1.5 w-1.5 rounded-full ${user.activo ? 'bg-primary' : 'bg-destructive'}`} />
+                            {user.activo ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* TODO: Add EditUserModal */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              disabled
+                              title="Edición próximamente"
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                              <span className="sr-only">Editar</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDelete(user.id)}
+                              disabled={deletingId === user.id}
+                            >
+                              {deletingId === user.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash className="h-3.5 w-3.5" />
+                              )}
+                              <span className="sr-only">Eliminar</span>
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {paginated.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center">
+                          <div className="flex flex-col items-center text-muted-foreground">
+                            <Users className="h-10 w-10 mb-3 opacity-30" />
+                            <p className="font-medium">No se encontraron usuarios</p>
+                            <p className="text-xs mt-1">Intenta ajustar los filtros de búsqueda</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {filtered.length > PAGE_SIZE && (
+                <div className="flex items-center justify-between border-t px-4 py-3">
+                  <p className="text-xs text-muted-foreground">
+                    Mostrando {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <Button
+                        key={p}
+                        variant={p === page ? 'default' : 'ghost'}
+                        size="sm"
+                        className="h-8 w-8 p-0 text-xs"
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </Button>
+                    ))}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
+
+      <CreateUserModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => {
+          loadUsers();
+          setCreateOpen(false);
+        }}
+      />
+
+      <EditUserModal
+        userId={editId}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={() => {
+          loadUsers();
+          setEditOpen(false);
+        }}
+      />
     </div>
   );
 }
