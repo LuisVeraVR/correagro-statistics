@@ -33,8 +33,7 @@ const breadcrumbMap: Record<string, string> = {
   "/dashboard/reports/margin": "Reporte % Margen",
   "/dashboard/reports/ruedas": "Reporte Ruedas",
   "/dashboard/reports/daily": "Negociado Diario",
-  "/admin/carga-archivo": "Cargar Archivo",
-  "/bi/archivos-historicos": "Archivos Historicos",
+  "/admin/carga-archivo": "Cargar Archivos",
 };
 
 function getBreadcrumb(pathname: string): string {

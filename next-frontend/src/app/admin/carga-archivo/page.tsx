@@ -11,12 +11,18 @@ import {
   X,
   Loader2,
   CloudUpload,
+  CalendarDays,
+  History,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
+type UploadMode = 'daily' | 'historic';
+
 export default function CargaArchivoPage() {
   const { data: session } = useSession();
+  const [mode, setMode] = useState<UploadMode>('daily');
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -62,6 +68,16 @@ export default function CargaArchivoPage() {
     if (fileInput) fileInput.value = '';
   };
 
+  const switchMode = (newMode: UploadMode) => {
+    if (newMode === mode) return;
+    setMode(newMode);
+    setFile(null);
+    setMessage(null);
+    setStats(null);
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
   const handleUpload = async () => {
     if (!file) return;
 
@@ -74,7 +90,8 @@ export default function CargaArchivoPage() {
 
     try {
       const token = (session?.user as any)?.accessToken;
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/transactions/upload`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const res = await fetch(`${API_URL}/transactions/upload`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -88,7 +105,8 @@ export default function CargaArchivoPage() {
         throw new Error(data.message || 'Error al cargar el archivo');
       }
 
-      setMessage({ type: 'success', text: 'Archivo procesado exitosamente.' });
+      const label = mode === 'daily' ? 'diario' : 'historico';
+      setMessage({ type: 'success', text: `Archivo ${label} procesado exitosamente.` });
       setStats({ count: data.count });
       setFile(null);
       const fileInput = document.getElementById('file-upload') as HTMLInputElement;
@@ -106,17 +124,93 @@ export default function CargaArchivoPage() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
+  const modeConfig = {
+    daily: {
+      title: 'Operaciones Diarias',
+      description: 'Importa las operaciones del dia desde un archivo Excel',
+      dropLabel: 'Arrastra el archivo diario aqui',
+      buttonLabel: 'Cargar Operaciones',
+      processingLabel: 'Procesando...',
+      instructions: [
+        'El archivo debe contener las operaciones del dia en formato .xlsx o .xls',
+        'Asegurate de que las columnas coincidan con el formato esperado',
+        'Los registros duplicados seran actualizados automaticamente',
+        'El archivo sera validado antes del procesamiento',
+      ],
+    },
+    historic: {
+      title: 'Archivos Historicos',
+      description: 'Importa operaciones de periodos pasados (2023, 2024, etc.)',
+      dropLabel: 'Arrastra el archivo historico aqui',
+      buttonLabel: 'Cargar Historico',
+      processingLabel: 'Procesando historico...',
+      instructions: [
+        'Sube archivos Excel con operaciones de anos anteriores',
+        'Utiliza el mismo formato que las cargas diarias',
+        'Los registros duplicados seran actualizados automaticamente',
+        'El proceso puede tardar mas segun el volumen de datos',
+      ],
+    },
+  };
+
+  const config = modeConfig[mode];
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Cargar Archivo de Operaciones</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Cargar Archivos</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Importa datos de operaciones desde archivos Excel (.xlsx)
+          Importa datos de operaciones diarias o archivos historicos
         </p>
       </div>
 
+      {/* Mode toggle */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => switchMode('daily')}
+          className={`flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+            mode === 'daily'
+              ? 'border-primary bg-primary/5 text-primary shadow-sm'
+              : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground'
+          }`}
+        >
+          <CalendarDays className="h-4 w-4" />
+          Operaciones Diarias
+        </button>
+        <button
+          onClick={() => switchMode('historic')}
+          className={`flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+            mode === 'historic'
+              ? 'border-primary bg-primary/5 text-primary shadow-sm'
+              : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/30 hover:text-foreground'
+          }`}
+        >
+          <History className="h-4 w-4" />
+          Archivos Historicos
+        </button>
+      </div>
+
       <div className="max-w-2xl">
+        {/* Context banner */}
+        <div className={`flex items-start gap-3 rounded-lg border p-4 mb-4 transition-colors duration-200 ${
+          mode === 'daily' ? 'border-primary/20 bg-primary/5' : 'border-amber-500/20 bg-amber-500/5'
+        }`}>
+          <Info className={`h-4 w-4 mt-0.5 shrink-0 ${
+            mode === 'daily' ? 'text-primary' : 'text-amber-600'
+          }`} />
+          <div>
+            <p className={`text-sm font-medium ${
+              mode === 'daily' ? 'text-primary' : 'text-amber-700'
+            }`}>
+              {config.title}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {config.description}
+            </p>
+          </div>
+        </div>
+
         {/* Upload area */}
         <Card>
           <CardContent className="p-6">
@@ -134,11 +228,15 @@ export default function CargaArchivoPage() {
             >
               {!file ? (
                 <>
-                  <div className="rounded-xl bg-muted p-4 mb-4">
-                    <CloudUpload className="h-8 w-8 text-muted-foreground" />
+                  <div className={`rounded-xl p-4 mb-4 ${
+                    mode === 'daily' ? 'bg-muted' : 'bg-amber-500/10'
+                  }`}>
+                    <CloudUpload className={`h-8 w-8 ${
+                      mode === 'daily' ? 'text-muted-foreground' : 'text-amber-600'
+                    }`} />
                   </div>
                   <p className="text-sm font-medium text-foreground mb-1">
-                    Arrastra tu archivo aqui
+                    {config.dropLabel}
                   </p>
                   <p className="text-xs text-muted-foreground mb-4">
                     o selecciona un archivo de tu computador
@@ -165,12 +263,25 @@ export default function CargaArchivoPage() {
               ) : (
                 <div className="w-full">
                   <div className="flex items-center gap-4 rounded-lg border border-border bg-card p-4">
-                    <div className="rounded-lg bg-primary/10 p-2.5 shrink-0">
-                      <FileSpreadsheet className="h-6 w-6 text-primary" />
+                    <div className={`rounded-lg p-2.5 shrink-0 ${
+                      mode === 'daily' ? 'bg-primary/10' : 'bg-amber-500/10'
+                    }`}>
+                      <FileSpreadsheet className={`h-6 w-6 ${
+                        mode === 'daily' ? 'text-primary' : 'text-amber-600'
+                      }`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{formatFileSize(file.size)}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          mode === 'daily'
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-amber-500/10 text-amber-700'
+                        }`}>
+                          {mode === 'daily' ? 'Diario' : 'Historico'}
+                        </span>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -219,17 +330,17 @@ export default function CargaArchivoPage() {
               <Button
                 onClick={handleUpload}
                 disabled={!file || uploading}
-                className="min-w-[160px]"
+                className="min-w-[180px]"
               >
                 {uploading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Procesando...
+                    {config.processingLabel}
                   </>
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-2" />
-                    Cargar Operaciones
+                    {config.buttonLabel}
                   </>
                 )}
               </Button>
@@ -242,12 +353,7 @@ export default function CargaArchivoPage() {
           <CardContent className="p-5">
             <h3 className="text-sm font-semibold text-foreground mb-3">Instrucciones</h3>
             <ul className="space-y-2">
-              {[
-                'El archivo debe estar en formato Excel (.xlsx o .xls)',
-                'Asegurate de que las columnas coincidan con el formato esperado',
-                'Los registros duplicados seran actualizados automaticamente',
-                'El proceso puede tardar segun el tamano del archivo',
-              ].map((text, i) => (
+              {config.instructions.map((text, i) => (
                 <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
                     {i + 1}

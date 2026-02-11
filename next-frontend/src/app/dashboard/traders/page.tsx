@@ -103,7 +103,7 @@ export default function TradersPage() {
   const inactiveCount = traders.filter((t) => !t.activo).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-h-0">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -117,15 +117,15 @@ export default function TradersPage() {
         </Button>
       </div>
 
-      {/* Stats cards */}
+      {/* Stats + Search row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <button
           onClick={() => setStatusFilter('all')}
-          className={`flex items-center gap-4 rounded-xl border p-4 transition-all hover:shadow-sm ${
+          className={`flex items-center gap-4 rounded-xl border p-4 transition-all duration-200 hover:shadow-sm h-[76px] ${
             statusFilter === 'all' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card'
           }`}
         >
-          <div className={`rounded-lg p-2.5 ${statusFilter === 'all' ? 'bg-primary/10' : 'bg-muted'}`}>
+          <div className={`rounded-lg p-2.5 shrink-0 ${statusFilter === 'all' ? 'bg-primary/10' : 'bg-muted'}`}>
             <Users className={`h-5 w-5 ${statusFilter === 'all' ? 'text-primary' : 'text-muted-foreground'}`} />
           </div>
           <div className="text-left">
@@ -135,11 +135,11 @@ export default function TradersPage() {
         </button>
         <button
           onClick={() => setStatusFilter('active')}
-          className={`flex items-center gap-4 rounded-xl border p-4 transition-all hover:shadow-sm ${
+          className={`flex items-center gap-4 rounded-xl border p-4 transition-all duration-200 hover:shadow-sm h-[76px] ${
             statusFilter === 'active' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card'
           }`}
         >
-          <div className={`rounded-lg p-2.5 ${statusFilter === 'active' ? 'bg-primary/10' : 'bg-muted'}`}>
+          <div className={`rounded-lg p-2.5 shrink-0 ${statusFilter === 'active' ? 'bg-primary/10' : 'bg-muted'}`}>
             <UserCheck className={`h-5 w-5 ${statusFilter === 'active' ? 'text-primary' : 'text-muted-foreground'}`} />
           </div>
           <div className="text-left">
@@ -149,11 +149,11 @@ export default function TradersPage() {
         </button>
         <button
           onClick={() => setStatusFilter('inactive')}
-          className={`flex items-center gap-4 rounded-xl border p-4 transition-all hover:shadow-sm ${
+          className={`flex items-center gap-4 rounded-xl border p-4 transition-all duration-200 hover:shadow-sm h-[76px] ${
             statusFilter === 'inactive' ? 'border-primary bg-primary/5 shadow-sm' : 'border-border bg-card'
           }`}
         >
-          <div className={`rounded-lg p-2.5 ${statusFilter === 'inactive' ? 'bg-primary/10' : 'bg-muted'}`}>
+          <div className={`rounded-lg p-2.5 shrink-0 ${statusFilter === 'inactive' ? 'bg-primary/10' : 'bg-muted'}`}>
             <UserX className={`h-5 w-5 ${statusFilter === 'inactive' ? 'text-primary' : 'text-muted-foreground'}`} />
           </div>
           <div className="text-left">
@@ -164,30 +164,26 @@ export default function TradersPage() {
       </div>
 
       {/* Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre o NIT..."
-              className="pl-10"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nombre o NIT..."
+          className="pl-10 h-10 bg-card border-border"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
 
       {/* Table */}
-      <Card>
+      <Card className="min-h-0">
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
+            <div className="flex items-center justify-center h-[400px]">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto min-h-[300px]">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/40">

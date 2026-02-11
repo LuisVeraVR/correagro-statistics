@@ -179,13 +179,6 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
               <div className="mx-auto mb-2 h-px w-6 bg-sidebar-border" />
             )}
             <NavItem
-              href="/admin/carga-archivo"
-              icon={Upload}
-              label="Cargar Archivo"
-              active={pathname.startsWith("/admin/carga-archivo")}
-              collapsed={collapsed}
-            />
-            <NavItem
               href="/dashboard/traders"
               icon={Users}
               label="Traders"
@@ -214,10 +207,10 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
               <div className="mx-auto mb-2 h-px w-6 bg-sidebar-border" />
             )}
             <NavItem
-              href="/bi/archivos-historicos"
+              href="/admin/carga-archivo"
               icon={FileArchive}
-              label="Archivos Historicos"
-              active={pathname.startsWith("/bi/archivos-historicos")}
+              label="Cargar Archivos"
+              active={pathname.startsWith("/admin/carga-archivo")}
               collapsed={collapsed}
             />
 
