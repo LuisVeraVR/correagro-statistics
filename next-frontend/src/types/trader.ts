@@ -15,4 +15,4 @@ export interface CreateTraderDto {
   activo?: boolean;
 }
 
-export interface UpdateTraderDto extends Partial<CreateTraderDto> {}
+export type UpdateTraderDto = Partial<CreateTraderDto>;
