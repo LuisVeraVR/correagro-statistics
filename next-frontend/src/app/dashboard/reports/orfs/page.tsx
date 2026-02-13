@@ -22,8 +22,6 @@ import {
     Loader2,
     Search
 } from 'lucide-react';
-// @ts-ignore
-import XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -115,8 +113,9 @@ export default function OrfsReportPage() {
         return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
         if (!data || data.length === 0) return;
+        const XLSX = await import('xlsx-js-style');
 
         // 1. Prepare Data Structure (AOA)
         const headers = ["CORREDOR", "NOMBRE", ...MONTHS, "Total General"];

@@ -1,15 +1,30 @@
 import { CreateTraderDto, UpdateTraderDto, Trader } from "@/types/trader";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const cache = new Map<string, { timestamp: number; data: unknown }>();
+
+const getCached = async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data as T;
+  }
+  const data = await fetcher();
+  cache.set(key, { timestamp: Date.now(), data });
+  return data;
+};
 
 export const getTraders = async (token: string): Promise<Trader[]> => {
-  const res = await fetch(`${API_URL}/traders`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const cacheKey = `traders:${token}`;
+  return getCached(cacheKey, async () => {
+    const res = await fetch(`${API_URL}/traders`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error('Failed to fetch traders');
+    return res.json();
   });
-  if (!res.ok) throw new Error('Failed to fetch traders');
-  return res.json();
 };
 
 export const getTrader = async (token: string, id: number): Promise<Trader> => {

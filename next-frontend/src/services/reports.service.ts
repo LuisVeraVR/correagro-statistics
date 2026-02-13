@@ -1,5 +1,3 @@
-import { useAuth } from '@/hooks/useAuth';
-
 export interface OrfsReportData {
     corredor: string;
     totalVolume: number;
@@ -45,6 +43,18 @@ export interface MarginReportData {
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const cache = new Map<string, { timestamp: number; data: unknown }>();
+
+const getCached = async <T>(key: string, fetcher: () => Promise<T>): Promise<T> => {
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        return cached.data as T;
+    }
+    const data = await fetcher();
+    cache.set(key, { timestamp: Date.now(), data });
+    return data;
+};
 
 export const getOrfsReport = async (token: string, year: number, month: string = 'all', trader: string | string[] = 'all', client: string | string[] = 'all', withGroups: boolean = true): Promise<OrfsReportData[]> => {
     const traderStr = Array.isArray(trader) ? trader.join(',') : trader;
@@ -91,13 +101,16 @@ export const getMarginReport = async (token: string, year: number, month: string
 };
 
 export const getClients = async (token: string, year: number): Promise<string[]> => {
-    const res = await fetch(`${API_URL}/reports/clients?year=${year}`, {
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
+    const cacheKey = `clients:${token}:${year}`;
+    return getCached(cacheKey, async () => {
+        const res = await fetch(`${API_URL}/reports/clients?year=${year}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+        if (!res.ok) throw new Error('Failed to fetch clients');
+        return res.json();
     });
-    if (!res.ok) throw new Error('Failed to fetch clients');
-    return res.json();
 };
 
 export interface RuedaOption {
@@ -142,11 +155,14 @@ export interface DailyReportData {
 }
 
 export const getRuedasOptions = async (token: string, year: number): Promise<RuedaOption[]> => {
-    const res = await fetch(`${API_URL}/reports/ruedas-options?year=${year}`, {
-        headers: { Authorization: `Bearer ${token}` }
+    const cacheKey = `ruedas-options:${token}:${year}`;
+    return getCached(cacheKey, async () => {
+        const res = await fetch(`${API_URL}/reports/ruedas-options?year=${year}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to fetch ruedas options');
+        return res.json();
     });
-    if (!res.ok) throw new Error('Failed to fetch ruedas options');
-    return res.json();
 };
 
 export const getRuedasReport = async (token: string, year: number, ruedas: string[], withGroups: boolean = true): Promise<RuedasReportData> => {

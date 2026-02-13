@@ -97,7 +97,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {session?.user?.role === "admin" && (
+          {(session?.user?.role === "admin" || session?.user?.role === "business_intelligence") && (
             <div className="flex items-center rounded-lg border border-border bg-background px-2">
               <span className="text-xs font-medium text-muted-foreground px-1">
                 Filtro
@@ -176,7 +176,7 @@ export default function DashboardPage() {
       )}
 
       {/* Rankings */}
-      <RankingGrid rankings={data.rankings} widgets={widgets} />
+      <RankingGrid rankings={data.rankings} widgets={widgets} year={year} withGroups={withGroups} />
 
       {/* Monthly Summary Table */}
       {widgets.resumen_mensual && (

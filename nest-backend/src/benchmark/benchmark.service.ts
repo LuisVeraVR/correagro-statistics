@@ -486,10 +486,21 @@ export class BenchmarkService {
   }
 
   async getProducts(year: number) {
+    const columnsResult = await this.db.execute(sql`SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bmc_productos_sector'`);
+    const rawColumns = Array.isArray(columnsResult) ? columnsResult : (columnsResult as any).rows ?? [];
+    const columnNames = rawColumns.map((row: any) => String(row.COLUMN_NAME || row.column_name || row.columnName || ''));
+    const montoCandidates = ['monto_millones', 'monto_mm', 'monto_millon', 'monto', 'volumen', 'valor'];
+    const montoColumn = montoCandidates.find(c => columnNames.includes(c));
+    const montoExpr = montoColumn === 'monto_millones'
+        ? schema.bmcProductosSector.montoMillones
+        : montoColumn
+            ? sql<number>`${sql.raw(`bmc_productos_sector.${montoColumn}`)}`
+            : sql<number>`0`;
+
     const rows = await this.db.select({
         producto: schema.bmcProductosSector.producto,
         sector: schema.bmcProductosSector.sector,
-        montoMillones: schema.bmcProductosSector.montoMillones,
+        montoMillones: montoExpr,
         participacionPct: schema.bmcProductosSector.participacionPct,
         variacionPct: schema.bmcProductosSector.variacionPct,
         fechaCarga: schema.bmcReportes.fechaCarga

@@ -22,8 +22,6 @@ import {
     Maximize2,
     Minimize2
 } from 'lucide-react';
-// @ts-ignore
-import XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -118,8 +116,9 @@ export default function MarginReportPage() {
         return `${val.toFixed(5)}%`;
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
         if (!data || data.data.length === 0) return;
+        const XLSX = await import('xlsx-js-style');
         
         // 1. Prepare Headers (Double Header for Month Columns: Vol, Com, Margin)
         // Row 1: CORREDOR, NOMBRE, [Month]..., Totales
@@ -450,7 +449,7 @@ export default function MarginReportPage() {
                             />
                         </div>
 
-                        {user?.role === 'admin' && (
+                        {(user?.role === 'admin' || user?.role === 'business_intelligence') && (
                         <div className="space-y-2">
                             <label className="text-sm font-medium leading-none">Grupos</label>
                             <select 

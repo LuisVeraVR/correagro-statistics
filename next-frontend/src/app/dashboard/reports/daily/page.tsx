@@ -16,8 +16,6 @@ import {
     Calendar,
     FileSpreadsheet
 } from 'lucide-react';
-// @ts-ignore
-import XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -85,8 +83,9 @@ export default function DailyReportPage() {
             .finally(() => setLoading(false));
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
         if (!data || data.data.length === 0) return;
+        const XLSX = await import('xlsx-js-style');
         
         // This report is Matrix: Client (Rows) x Ruedas (Cols)
         // Structure:
@@ -287,7 +286,7 @@ export default function DailyReportPage() {
                             </div>
                         </div>
 
-                        {user?.role === 'admin' && (
+                        {(user?.role === 'admin' || user?.role === 'business_intelligence') && (
                         <div className="space-y-2">
                             <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Grupos</label>
                             <select 

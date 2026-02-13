@@ -1,32 +1,20 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { DRIZZLE } from '../drizzle/drizzle.module';
 import * as schema from '../drizzle/schema';
 import { MySql2Database } from 'drizzle-orm/mysql2';
-import { sql, eq, desc, and, inArray, notInArray } from 'drizzle-orm';
+import { sql, eq, desc, asc, and, inArray, notInArray } from 'drizzle-orm';
 import { TradersService } from '../traders/traders.service';
 
 @Injectable()
 export class DashboardService {
   constructor(
     @Inject(DRIZZLE) private db: MySql2Database<typeof schema>,
-    private tradersService: TradersService
+    @Inject(forwardRef(() => TradersService)) private tradersService: TradersService
   ) {}
 
   async getSummary(year: number, withGroups: boolean, user?: any) {
     const transactions = schema.orfsTransactions;
-    
-    let whereClause = eq(transactions.year, year);
-    if (user && user.role === 'trader' && user.traderName) {
-        const aliases = await this.getTraderAliases([user.traderName.trim()]);
-        console.log(`[DashboardService] Trader: ${user.traderName}, Aliases found: ${JSON.stringify(aliases)}`);
-        whereClause = and(eq(transactions.year, year), inArray(transactions.corredor, aliases))!;
-    } else if (!withGroups) {
-        // Admin filter: Exclude special groups
-        whereClause = and(
-          eq(transactions.year, year),
-          notInArray(transactions.corredor, ['Grupo BIOS', 'Grupo Bavaria'])
-        )!;
-    }
+    const whereClause = await this.buildWhereClause(transactions, year, withGroups, user);
 
     // KPIs
     const kpisResult = await this.db
@@ -139,6 +127,38 @@ export class DashboardService {
     };
   }
 
+  async getRanking(type: string, order: 'asc' | 'desc', year: number, withGroups: boolean, user?: any) {
+    const transactions = schema.orfsTransactions;
+    const whereClause = await this.buildWhereClause(transactions, year, withGroups, user);
+
+    const configMap: Record<string, { name: any; value: any }> = {
+      traders_volume: { name: transactions.corredor, value: transactions.negociado },
+      traders_commission: { name: transactions.corredor, value: transactions.comiCorr },
+      clients_volume: { name: transactions.nombre, value: transactions.negociado },
+      clients_commission: { name: transactions.nombre, value: transactions.comiCorr }
+    };
+
+    const config = configMap[type];
+    if (!config) return [];
+
+    const orderByExpr = order === 'asc'
+      ? asc(sql`sum(${config.value})`)
+      : desc(sql`sum(${config.value})`);
+
+    const rows = await this.db
+      .select({
+        name: config.name,
+        value: sql<number>`sum(${config.value})`
+      })
+      .from(transactions)
+      .where(whereClause)
+      .groupBy(config.name)
+      .orderBy(orderByExpr)
+      .limit(5);
+
+    return rows.map(r => ({ name: r.name, value: Number(r.value) }));
+  }
+
   async getLayout(userId: number) {
     // Mock layout retrieval
     return {
@@ -153,6 +173,22 @@ export class DashboardService {
   async saveLayout(userId: number, layout: any) {
     console.log(`Saving layout for user ${userId}:`, layout);
     return { success: true };
+  }
+
+  private async buildWhereClause(transactions: typeof schema.orfsTransactions, year: number, withGroups: boolean, user?: any) {
+    let whereClause = eq(transactions.year, year);
+    if (user && user.role === 'trader' && user.traderName) {
+        const aliases = await this.getTraderAliases([user.traderName.trim()]);
+        console.log(`[DashboardService] Trader: ${user.traderName}, Aliases found: ${JSON.stringify(aliases)}`);
+        whereClause = and(eq(transactions.year, year), inArray(transactions.corredor, aliases))!;
+    } else if (!withGroups) {
+        whereClause = and(
+          eq(transactions.year, year),
+          notInArray(transactions.corredor, ['Grupo BIOS', 'Grupo Bavaria'])
+        )!;
+    }
+
+    return whereClause;
   }
 
   private async getTraderAliases(traderNames: string[]): Promise<string[]> {

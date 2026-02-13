@@ -1,5 +1,6 @@
-'use client';
+"use client";
 
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { 
@@ -13,7 +14,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, PieChart as RechartsPieChart, Pie, Cell, ScatterChart, Scatter, ZAxis } from 'recharts';
 import { TrendingUp, TrendingDown, Users, DollarSign, Activity, Award, LayoutGrid, PieChart, Package, Scale, Check, Download, Loader2, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import * as XLSX from 'xlsx';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const COLORS = [
@@ -112,8 +112,9 @@ export default function BenchmarkPage() {
         return `${val.toFixed(2)}%`;
     };
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
         if (!ranking.length) return;
+        const XLSX = await import('xlsx');
 
         const wb = XLSX.utils.book_new();
         
@@ -181,15 +182,16 @@ export default function BenchmarkPage() {
         });
     };
 
-    return (
-        <div className="space-y-6">
+    return <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
                         <Activity className="w-8 h-8 text-primary" />
                         Benchmark
                     </h1>
-                    <p className="text-muted-foreground mt-1">Ranking competitivo - Correagro S.A., comisionista No. 1 de la Bolsa Mercantil</p>
+                    <p className="text-muted-foreground mt-1">
+                        Ranking competitivo - Correagro S.A., comisionista No. 1 de la Bolsa Mercantil
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2 bg-card border rounded-md px-3 py-1">
@@ -791,6 +793,7 @@ export default function BenchmarkPage() {
                     </CardContent>
                 </Card>
             </TabsContent>
-        </div>
-    );
+                </Tabs>
+            )}
+        </div>;
 }

@@ -23,8 +23,6 @@ import {
     Search,
     Calendar
 } from 'lucide-react';
-// @ts-ignore
-import XLSX from 'xlsx-js-style';
 import { cn } from '@/lib/utils';
 
 export default function RuedasReportPage() {
@@ -63,10 +61,10 @@ export default function RuedasReportPage() {
         try {
             const result = await getRuedasReport(token, year, selectedRuedas.length > 0 ? selectedRuedas : [], withGroups);
             setData(result);
-            setExpandedTraders(result.data.map(d => d.corredor));
+            setExpandedTraders((result.data ?? []).map(d => d.corredor));
             // Also expand all wheels by default? Maybe too much. Let's keep wheels collapsed or expanded based on user pref.
             // Let's expand all wheels for now to show data immediately
-            const allWheels = result.data.flatMap(d => d.wheels.map(w => `${d.corredor}-${w.ruedaNo}`));
+            const allWheels = (result.data ?? []).flatMap(d => (d.wheels ?? []).map(w => `${d.corredor}-${w.ruedaNo}`));
             setExpandedWheels(allWheels);
         } catch (error) {
             console.error(error);
@@ -101,7 +99,7 @@ export default function RuedasReportPage() {
     const toggleAll = (expand: boolean) => {
         if (data && expand) {
             setExpandedTraders(data.data.map(d => d.corredor));
-            setExpandedWheels(data.data.flatMap(d => d.wheels.map(w => `${d.corredor}-${w.ruedaNo}`)));
+            setExpandedWheels(data.data.flatMap(d => (d.wheels ?? []).map(w => `${d.corredor}-${w.ruedaNo}`)));
         } else {
             setExpandedTraders([]);
             setExpandedWheels([]);
@@ -112,12 +110,14 @@ export default function RuedasReportPage() {
         return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
     };
 
-    const formatMargin = (val: number) => {
-        return `${val.toFixed(3)}%`;
+    const formatMargin = (commission: number, volume: number) => {
+        const margin = volume > 0 ? (commission / volume) * 100 : 0;
+        return `${margin.toFixed(3)}%`;
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
         if (!data || data.data.length === 0) return;
+        const XLSX = await import('xlsx-js-style');
         
         // Structure: 
         // Header: CORREDOR, RUEDA, FECHA, CLIENTE, VOLUMEN, COMISION
@@ -172,7 +172,7 @@ export default function RuedasReportPage() {
             // Apply style to this? Maybe just bold.
             currentRow++;
 
-            trader.wheels.forEach(wheel => {
+            (trader.wheels ?? []).forEach(wheel => {
                 let wheelVol = 0;
                 let wheelCom = 0;
 
@@ -187,7 +187,7 @@ export default function RuedasReportPage() {
                 aoa.push(["", `Rueda ${wheel.ruedaNo}`, wheel.fecha, "", "", ""]);
                 currentRow++;
 
-                wheel.clients.forEach(client => {
+                (wheel.clients ?? []).forEach(client => {
                     aoa.push(["", "", "", client.name, client.volume, client.commission]);
                     wheelVol += client.volume;
                     wheelCom += client.commission;
@@ -358,7 +358,7 @@ export default function RuedasReportPage() {
                             <div className="flex items-center gap-2 mb-1 text-primary text-sm font-medium">
                                 <Percent className="w-4 h-4" /> Margen Promedio
                             </div>
-                            <div className="text-2xl font-bold text-foreground">{formatMargin(data.kpis.avgMargin)}</div>
+                            <div className="text-2xl font-bold text-foreground">{formatMargin(data.kpis.totalCommission, data.kpis.totalVolume)}</div>
                         </CardContent>
                     </Card>
                 </div>
@@ -388,7 +388,7 @@ export default function RuedasReportPage() {
                             />
                         </div>
 
-                        {user?.role === 'admin' && (
+                        {(user?.role === 'admin' || user?.role === 'business_intelligence') && (
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-1">Grupos</label>
                             <select 
@@ -445,7 +445,7 @@ export default function RuedasReportPage() {
                                         {formatCurrency(trader.totalVolume)}
                                     </span>
                                     <span className="bg-background border px-2 py-1 rounded font-mono text-muted-foreground">
-                                        {formatMargin(trader.avgMargin)}
+                                        {formatMargin(trader.totalCommission, trader.totalVolume)}
                                     </span>
                                 </div>
                             </div>
@@ -453,7 +453,7 @@ export default function RuedasReportPage() {
                             {/* Wheels List */}
                             {expandedTraders.includes(trader.corredor) && (
                                 <div className="p-2 space-y-2 bg-muted/10">
-                                    {trader.wheels.map(wheel => (
+                                    {(trader.wheels ?? []).map(wheel => (
                                         <div key={wheel.ruedaNo} className="border rounded bg-background">
                                             {/* Wheel Header */}
                                             <div 
@@ -489,7 +489,7 @@ export default function RuedasReportPage() {
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-border">
-                                                            {wheel.clients.map((client, idx) => (
+                                                            {(wheel.clients ?? []).map((client, idx) => (
                                                                 <tr key={idx} className="hover:bg-muted/20">
                                                                     <td className="p-2 font-medium">{client.name}</td>
                                                                     <td className="p-2 text-right font-mono text-muted-foreground">
