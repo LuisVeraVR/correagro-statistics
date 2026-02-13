@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 import { signOut, useSession } from "next-auth/react";
+import { FullScreenLoader } from "@/components/ui/full-screen-loader";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   collapsed?: boolean;
@@ -81,8 +82,16 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
   const [reportesOpen, setReportesOpen] = useState(
     pathname.startsWith("/dashboard/reports")
   );
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const role = session?.user?.role || "admin";
+
+  const handleSignOut = async () => {
+    setLoggingOut(true);
+    // Add a small delay to ensure the loader is rendered and visible to the user
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    await signOut();
+  };
 
   return (
     <div
@@ -92,6 +101,7 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
         className
       )}
     >
+      {loggingOut && <FullScreenLoader text="Cerrando sesión..." />}
       {/* Logo Header */}
       <div className={cn(
         "flex items-center border-b border-sidebar-border transition-all duration-300 shrink-0",
@@ -157,10 +167,10 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
           )}
           {role === "trader" && (
             <NavItem
-              href="/trader/dashboard"
+              href="/dashboard"
               icon={LineChart}
               label="Mi Dashboard"
-              active={pathname === "/trader/dashboard"}
+              active={pathname === "/dashboard"}
               collapsed={collapsed}
             />
           )}
@@ -196,16 +206,17 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
         )}
 
         {/* Business Intelligence */}
-        {(role === "business_intelligence" || role === "admin") && (
+        {(role === "business_intelligence" || role === "admin" || role === "trader") && (
           <div className="space-y-1">
             {!collapsed && (
               <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-sidebar-muted">
-                Business Intelligence
+                Reportes
               </p>
             )}
             {collapsed && (
               <div className="mx-auto mb-2 h-px w-6 bg-sidebar-border" />
             )}
+            {(role === "business_intelligence" || role === "admin") && (
             <NavItem
               href="/admin/carga-archivo"
               icon={FileArchive}
@@ -213,6 +224,7 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
               active={pathname.startsWith("/admin/carga-archivo")}
               collapsed={collapsed}
             />
+            )}
 
             {/* Reportes Accordion */}
             {collapsed ? (
@@ -233,7 +245,7 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
                 <NavItem
                   href="/dashboard/reports/margin"
                   icon={Percent}
-                  label="% Margen"
+                  label="Margen"
                   active={pathname === "/dashboard/reports/margin"}
                   collapsed
                 />
@@ -289,7 +301,7 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
                   <NavItem
                     href="/dashboard/reports/margin"
                     icon={Percent}
-                    label="% Margen"
+                    label="Margen"
                     active={pathname === "/dashboard/reports/margin"}
                   />
                   <NavItem
@@ -322,7 +334,7 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
             </Tooltip>
             <Tooltip content="Cerrar sesion" side="right" enabled>
               <button
-                onClick={() => signOut()}
+                onClick={handleSignOut}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-sidebar-muted transition-colors hover:bg-sidebar-accent/10 hover:text-sidebar-foreground"
                 title="Cerrar sesion"
               >
@@ -347,7 +359,7 @@ export function Sidebar({ className, collapsed = false, onClose }: SidebarProps)
                 </p>
               </div>
               <button
-                onClick={() => signOut()}
+                onClick={handleSignOut}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sidebar-muted transition-colors hover:bg-sidebar-accent/10 hover:text-sidebar-foreground"
                 title="Cerrar sesion"
               >

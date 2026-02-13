@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSession } from "next-auth/react";
-import { handleAuthError } from "@/utils/auth-helper";
+import { useSession, signOut } from "next-auth/react";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("es-CO", {
@@ -73,7 +72,10 @@ export function RankingCard({ title, initialData, type = "currency", apiType, ye
         }
       );
 
-      handleAuthError(res);
+      if (res.status === 401) {
+        await signOut({ callbackUrl: "/login" });
+        return;
+      }
 
       if (!res.ok) throw new Error('Failed to fetch');
       

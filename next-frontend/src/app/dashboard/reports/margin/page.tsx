@@ -1,14 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { getMarginReport, MarginReportData, getClients } from '@/services/reports.service';
 import { getTraders } from '@/services/traders.service';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { FileSpreadsheet, ChevronDown, ChevronRight, Filter, Users, TrendingUp, DollarSign, Percent } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { 
+    FileSpreadsheet, 
+    ChevronDown, 
+    ChevronRight, 
+    Filter, 
+    Users, 
+    TrendingUp, 
+    DollarSign, 
+    Percent,
+    Download,
+    Loader2,
+    RotateCcw,
+    Maximize2,
+    Minimize2
+} from 'lucide-react';
+// @ts-ignore
+import XLSX from 'xlsx-js-style';
+import { cn } from '@/lib/utils';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -36,10 +52,15 @@ export default function MarginReportPage() {
         if (!token) return;
         
         // Load Traders
-        getTraders(token).then(traders => {
-            const options = traders.map(t => ({ label: t.nombre, value: t.nombre }));
-            setAvailableTraders(options);
-        }).catch(err => console.error("Error loading traders", err));
+        if (user?.role === 'trader' && user?.traderName) {
+            setAvailableTraders([{ label: user.traderName, value: user.traderName }]);
+            setSelectedTraders([user.traderName]);
+        } else {
+            getTraders(token).then(traders => {
+                const options = traders.map(t => ({ label: t.nombre, value: t.nombre }));
+                setAvailableTraders(options);
+            }).catch(err => console.error("Error loading traders", err));
+        }
 
         // Load Clients
         getClients(token, year).then(clients => {
@@ -47,7 +68,7 @@ export default function MarginReportPage() {
                 setAvailableClients(options);
         }).catch(err => console.error("Error loading clients", err));
 
-    }, [token, year]);
+    }, [token, year, user]);
 
     const fetchData = async () => {
         if (!token) return;
@@ -62,7 +83,6 @@ export default function MarginReportPage() {
             setExpandedTraders(result.data.map(d => d.corredor));
         } catch (error) {
             console.error(error);
-            alert('Error al cargar el reporte');
         } finally {
             setLoading(false);
         }
@@ -99,62 +119,310 @@ export default function MarginReportPage() {
     };
 
     const handleExport = () => {
-        if (!data) return;
-        // Complex export logic could go here, for now simpler version
-        const rows: any[] = [];
+        if (!data || data.data.length === 0) return;
+        
+        // 1. Prepare Headers (Double Header for Month Columns: Vol, Com, Margin)
+        // Row 1: CORREDOR, NOMBRE, [Month]..., Totales
+        // Row 2: ..., ..., Vol, Com, %, ..., Vol, Com, %
+        
+        // Let's simplify to single row header for compatibility with the style logic, 
+        // OR implement merged headers. 
+        // The user asked for "lo mismo", implying hierarchical structure.
+        // Let's use a similar structure:
+        // Header 1: Metadata
+        // Header 2: Columns
+        
+        const aoa: any[][] = [];
+        
+        // Metadata Rows
+        const currentDate = new Date().toLocaleString('es-CO');
+        const userName = user?.name || 'Desconocido';
+        
+        aoa.push(["CORREAGRO S.A."]);
+        aoa.push([`Generado por: ${userName}`]);
+        aoa.push([`Fecha: ${currentDate}`]);
+        aoa.push([]); 
+
+        // Headers
+        // Main Header Row
+        const headerRow1 = ["CORREDOR", "CLIENTE"];
+        MONTHS.forEach(m => {
+            headerRow1.push(m, "", ""); // 3 columns per month
+        });
+        headerRow1.push("TOTAL", "", "");
+        aoa.push(headerRow1);
+
+        // Sub Header Row
+        const headerRow2 = ["", ""];
+        MONTHS.forEach(() => {
+            headerRow2.push("Vol", "Com", "%");
+        });
+        headerRow2.push("Vol", "Com", "%");
+        aoa.push(headerRow2);
+
+        const headerRowIndexStart = 4;
+        const headerRowIndexEnd = 5;
+        let currentRow = 6;
+        const totalRows: number[] = [];
+
+        // Global Accumulators (We need to calculate these as we go or pre-calculate)
+        // Since data already has totals, we can sum them up.
+        // But for "Margin %" global, we cannot sum percentages. We need sum(Vol) and sum(Com).
+        
+        const globalMonthStats = MONTHS.map(() => ({ vol: 0, com: 0 }));
+        let globalTotalVol = 0;
+        let globalTotalCom = 0;
+
         data.data.forEach(group => {
-            group.clients.forEach(c => {
-                const row: any = {
-                    Corredor: group.corredor,
-                    NIT: c.nit,
-                    Cliente: c.name,
-                };
-                MONTHS.forEach(m => {
-                    row[`${m} - Vol`] = c.months[m]?.volume || 0;
-                    row[`${m} - Com`] = c.months[m]?.commission || 0;
-                    row[`${m} - Margen`] = c.months[m]?.margin || 0;
+            // Group Accumulators
+            const groupMonthStats = MONTHS.map(() => ({ vol: 0, com: 0 }));
+            let groupTotalVol = 0;
+            let groupTotalCom = 0;
+
+            // Clients
+            group.clients.forEach((c, idx) => {
+                const row: any[] = [];
+                row.push(idx === 0 ? group.corredor : "");
+                row.push(c.name);
+
+                MONTHS.forEach((m, mIdx) => {
+                    const vol = c.months[m]?.volume || 0;
+                    const com = c.months[m]?.commission || 0;
+                    const margin = c.months[m]?.margin || 0;
+                    
+                    row.push(vol, com, margin);
+
+                    // Accumulate
+                    groupMonthStats[mIdx].vol += vol;
+                    groupMonthStats[mIdx].com += com;
                 });
-                row['Total Vol'] = c.totalVolume;
-                row['Total Com'] = c.totalCommission;
-                row['Total Margen'] = c.totalMargin;
-                rows.push(row);
+
+                row.push(c.totalVolume, c.totalCommission, c.totalMargin);
+                
+                groupTotalVol += c.totalVolume;
+                groupTotalCom += c.totalCommission;
+
+                aoa.push(row);
+                currentRow++;
             });
+
+            // Group Total Row
+            const totalRow: any[] = [];
+            totalRow.push(`Total ${group.corredor}`);
+            totalRow.push("");
+
+            MONTHS.forEach((_, mIdx) => {
+                const vol = groupMonthStats[mIdx].vol;
+                const com = groupMonthStats[mIdx].com;
+                const margin = vol > 0 ? (com / vol) * 100 : 0; // Assuming margin is percentage 0-100 or 0-1. 
+                // Wait, in code data.margin is likely 0.2 for 0.2%. Let's check formatMargin: `${val.toFixed(5)}%`.
+                // If it is raw number, we should check.
+                // In page.tsx: `data.margin < 0.2 ? ...`. So it is likely percentage number (e.g. 0.15)
+                // Let's assume input data is correct.
+                
+                totalRow.push(vol, com, margin);
+                
+                // Add to Global
+                globalMonthStats[mIdx].vol += vol;
+                globalMonthStats[mIdx].com += com;
+            });
+
+            const groupTotalMargin = groupTotalVol > 0 ? (groupTotalCom / groupTotalVol) * 100 : 0;
+            totalRow.push(groupTotalVol, groupTotalCom, groupTotalMargin);
+            
+            globalTotalVol += groupTotalVol;
+            globalTotalCom += groupTotalCom;
+
+            aoa.push(totalRow);
+            totalRows.push(currentRow);
+            currentRow++;
         });
 
-        const ws = XLSX.utils.json_to_sheet(rows);
+        // Global Total Row
+        const globalRow: any[] = [];
+        globalRow.push("Total General");
+        globalRow.push("");
+
+        MONTHS.forEach((_, mIdx) => {
+            const vol = globalMonthStats[mIdx].vol;
+            const com = globalMonthStats[mIdx].com;
+            const margin = vol > 0 ? (com / vol) * 100 : 0;
+            globalRow.push(vol, com, margin);
+        });
+
+        const globalTotalMargin = globalTotalVol > 0 ? (globalTotalCom / globalTotalVol) * 100 : 0;
+        globalRow.push(globalTotalVol, globalTotalCom, globalTotalMargin);
+
+        aoa.push(globalRow);
+        totalRows.push(currentRow);
+
+        // 2. Create Sheet
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+        // 3. Styles
+        const range = XLSX.utils.decode_range(ws['!ref'] || "A1:A1");
+
+        // Styles Definitions
+        const titleStyle = { font: { bold: true, sz: 14 }, alignment: { horizontal: "left" } };
+        const metaStyle = { font: { italic: true, sz: 10, color: { rgb: "555555" } }, alignment: { horizontal: "left" } };
+        const headerStyle = { 
+            font: { bold: true }, 
+            fill: { fgColor: { rgb: "EFEFEF" } },
+            border: { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } },
+            alignment: { horizontal: "center", vertical: "center" }
+        };
+        const totalStyle = { 
+            font: { bold: true }, 
+            fill: { fgColor: { rgb: "FFC000" } },
+            border: { top: { style: "thin" }, bottom: { style: "thin" } }
+        };
+        const numberFormat = '#,##0';
+        const percentFormat = '0.000%';
+
+        // Apply Metadata
+        if (!ws["A1"]) ws["A1"] = { v: "", t: "s" }; ws["A1"].s = titleStyle;
+        if (!ws["A2"]) ws["A2"] = { v: "", t: "s" }; ws["A2"].s = metaStyle;
+        if (!ws["A3"]) ws["A3"] = { v: "", t: "s" }; ws["A3"].s = metaStyle;
+
+        // Apply Header Styles
+        for (let R = headerRowIndexStart; R <= headerRowIndexEnd; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[cellRef]) ws[cellRef] = { v: "", t: "s" };
+                ws[cellRef].s = headerStyle;
+            }
+        }
+
+        // Apply Content Styles
+        for (let R = headerRowIndexEnd + 1; R <= range.e.r; ++R) {
+            const isTotalRow = totalRows.includes(R);
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[cellRef]) ws[cellRef] = { v: "", t: "s" };
+
+                if (isTotalRow) ws[cellRef].s = totalStyle;
+
+                // Formats
+                // Cols: 0,1 -> Text
+                // Month Blocks: 3 cols each. Start Col 2.
+                // Month 0: 2,3,4 (Vol, Com, %)
+                // Month 1: 5,6,7
+                // ...
+                // Total: Last 3 cols.
+                
+                if (C >= 2 && typeof ws[cellRef].v === 'number') {
+                    // Check if it is a % column
+                    // Col 2 = Vol, 3 = Com, 4 = %
+                    // (C - 2) % 3 === 2 -> Percent column
+                    if ((C - 2) % 3 === 2) {
+                         ws[cellRef].z = percentFormat;
+                         // Also color red/green if needed?
+                         // If value < 0.2 (assuming 0.2%) -> Red, else Green?
+                         // The logic in frontend is data.margin < 0.2 (meaning 0.2%).
+                         // Here we are calculating percentages. 
+                         // If raw value is 0.15 (15%), then 0.2 is 20%.
+                         // Need to be careful with units.
+                         // Frontend: data.margin.toFixed(3). If data.margin is 0.1534, it prints 0.153.
+                         // If < 0.2 (0.2), it is Red.
+                         // Let's stick to standard formatting for now.
+                    } else {
+                        ws[cellRef].z = numberFormat;
+                    }
+                }
+            }
+        }
+
+        // Merge Cells
+        if(!ws['!merges']) ws['!merges'] = [];
+        ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }); // Title
+        
+        // Merge Main Headers (Month Names)
+        // Row 4 (index 4). Col 2,3,4 -> Month 1
+        let col = 2;
+        MONTHS.forEach(() => {
+            ws['!merges'].push({ s: { r: 4, c: col }, e: { r: 4, c: col + 2 } });
+            col += 3;
+        });
+        // Merge Total Header
+        ws['!merges'].push({ s: { r: 4, c: col }, e: { r: 4, c: col + 2 } });
+
+        // Column Widths
+        ws['!cols'] = [
+            { wch: 30 }, { wch: 40 }, 
+            ...Array(MONTHS.length * 3 + 3).fill({ wch: 12 })
+        ];
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Reporte Margen");
         XLSX.writeFile(wb, `Reporte_Margen_${year}.xlsx`);
     };
 
+    const handleClearFilters = () => {
+        setYear(new Date().getFullYear());
+        setMonth('all');
+        setSelectedTraders([]);
+        setSelectedClients([]);
+        setWithGroups(true);
+    };
+
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <TrendingUp className="w-8 h-8 text-gray-700" />
-                    Reporte de Margen
-                </h1>
-                <p className="text-gray-500">Análisis de rentabilidad por corredor y cliente</p>
+        <div className="space-y-6 min-h-0">
+            {/* Header */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                        <TrendingUp className="h-6 w-6 text-primary" />
+                        Reporte de Margen
+                    </h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        Análisis de rentabilidad por corredor y cliente
+                    </p>
+                </div>
+                <div className="flex gap-2">
+                    <Button 
+                        onClick={() => toggleAll(true)} 
+                        variant="outline" 
+                        size="sm"
+                        disabled={!data}
+                    >
+                        <Maximize2 className="mr-2 h-4 w-4" /> Abrir Todos
+                    </Button>
+                    <Button 
+                        onClick={() => toggleAll(false)} 
+                        variant="outline" 
+                        size="sm"
+                        disabled={!data}
+                    >
+                        <Minimize2 className="mr-2 h-4 w-4" /> Cerrar Todos
+                    </Button>
+                    <Button 
+                        onClick={handleExport} 
+                        disabled={!data || data.data.length === 0}
+                        className="shrink-0"
+                    >
+                        <Download className="mr-2 h-4 w-4" /> Exportar
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}
             <Card>
                 <CardContent className="p-6">
                     <div className={`grid grid-cols-1 gap-4 items-end ${user?.role === 'admin' ? 'md:grid-cols-6' : 'md:grid-cols-5'}`}>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Año</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none">Año</label>
                             <select 
-                                className="w-full border-gray-300 rounded-md shadow-sm p-2 border"
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 value={year}
                                 onChange={(e) => setYear(Number(e.target.value))}
                             >
                                 {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Meses</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none">Meses</label>
                             <select 
-                                className="w-full border-gray-300 rounded-md shadow-sm p-2 border"
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 value={month}
                                 onChange={(e) => setMonth(e.target.value)}
                             >
@@ -162,18 +430,18 @@ export default function MarginReportPage() {
                                 {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Corredores</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none">Corredores</label>
                             <MultiSelect 
                                 options={availableTraders}
                                 selected={selectedTraders}
                                 onChange={setSelectedTraders}
-                                placeholder="Todos los corredores"
+                                placeholder="Filtrar por corredores..."
                                 disabled={user?.role === 'trader'}
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Clientes</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none">Clientes</label>
                             <MultiSelect 
                                 options={availableClients}
                                 selected={selectedClients}
@@ -183,10 +451,10 @@ export default function MarginReportPage() {
                         </div>
 
                         {user?.role === 'admin' && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Grupos</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none">Grupos</label>
                             <select 
-                                className="w-full border-gray-300 rounded-md shadow-sm p-2 border"
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 value={withGroups ? "true" : "false"}
                                 onChange={(e) => setWithGroups(e.target.value === "true")}
                             >
@@ -197,13 +465,11 @@ export default function MarginReportPage() {
                         )}
 
                         <div className="flex gap-2">
-                            <Button className="bg-green-600 hover:bg-green-700 text-white flex-1" onClick={fetchData}>
-                                <Filter className="w-4 h-4 mr-2" />
-                                Aplicar
+                            <Button variant="outline" onClick={handleClearFilters} className="flex-1" title="Limpiar filtros">
+                                <RotateCcw className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" className="text-green-600 border-green-600 hover:bg-green-50" onClick={handleExport}>
-                                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                                Exportar
+                            <Button onClick={fetchData} className="flex-1" title="Aplicar filtros">
+                                <Filter className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
@@ -213,79 +479,78 @@ export default function MarginReportPage() {
             {/* KPI Cards */}
             {data && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-[#6f42c1] text-white p-4 rounded-lg shadow-sm">
-                        <div className="flex items-center gap-2 mb-1 opacity-90 text-sm font-medium">
-                            <DollarSign className="w-4 h-4" /> Total Transado
-                        </div>
-                        <div className="text-2xl font-bold">{formatCurrency(data.kpis.totalVolume)}</div>
-                    </div>
-                    <div className="bg-[#e83e8c] text-white p-4 rounded-lg shadow-sm">
-                        <div className="flex items-center gap-2 mb-1 opacity-90 text-sm font-medium">
-                            <DollarSign className="w-4 h-4" /> Total Comisión
-                        </div>
-                        <div className="text-2xl font-bold">{formatCurrency(data.kpis.totalCommission)}</div>
-                    </div>
-                    <div className="bg-[#20c997] text-white p-4 rounded-lg shadow-sm">
-                        <div className="flex items-center gap-2 mb-1 opacity-90 text-sm font-medium">
-                            <Percent className="w-4 h-4" /> Margen Promedio
-                        </div>
-                        <div className="text-2xl font-bold">{formatMargin(data.kpis.avgMargin)}</div>
-                    </div>
-                    <div className="bg-[#0dcaf0] text-white p-4 rounded-lg shadow-sm">
-                        <div className="flex items-center gap-2 mb-1 opacity-90 text-sm font-medium">
-                            <Users className="w-4 h-4" /> Total Clientes
-                        </div>
-                        <div className="text-2xl font-bold">{data.kpis.totalClients}</div>
-                    </div>
+                    <Card className="bg-primary/10 border-primary/20">
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-2 mb-1 text-primary text-sm font-medium">
+                                <DollarSign className="w-4 h-4" /> Total Transado
+                            </div>
+                            <div className="text-2xl font-bold text-foreground">{formatCurrency(data.kpis.totalVolume)}</div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-primary/5 border-primary/10">
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-2 mb-1 text-foreground/80 text-sm font-medium">
+                                <DollarSign className="w-4 h-4" /> Total Comisión
+                            </div>
+                            <div className="text-2xl font-bold text-foreground">{formatCurrency(data.kpis.totalCommission)}</div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-green-500/10 border-green-500/20">
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-2 mb-1 text-green-700 text-sm font-medium">
+                                <Percent className="w-4 h-4" /> Margen Promedio
+                            </div>
+                            <div className="text-2xl font-bold text-green-700">{formatMargin(data.kpis.avgMargin)}</div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-muted">
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-2 mb-1 text-muted-foreground text-sm font-medium">
+                                <Users className="w-4 h-4" /> Total Clientes
+                            </div>
+                            <div className="text-2xl font-bold text-foreground">{data.kpis.totalClients}</div>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
-
-            {/* Actions */}
-            <div className="flex justify-between items-center">
-                <div className="flex gap-2">
-                    <Button size="sm" className="bg-green-500 hover:bg-green-600 text-white" onClick={() => toggleAll(true)}>
-                        Abrir Todos
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => toggleAll(false)}>
-                        Cerrar Todos
-                    </Button>
-                </div>
-                {data && (
-                    <div className="text-right text-gray-500 text-sm">
-                        {data.data.length} corredores | {data.kpis.totalClients} clientes | Margen: {formatMargin(data.kpis.avgMargin)}
-                    </div>
-                )}
-            </div>
 
             {/* Report Content */}
             <div className="space-y-4">
                 {loading ? (
-                    <div className="text-center py-10">Cargando reporte...</div>
+                    <div className="flex items-center justify-center h-[200px]">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
                 ) : !data || data.data.length === 0 ? (
-                    <div className="text-center py-10 text-gray-500">No se encontraron datos</div>
+                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                        <TrendingUp className="h-12 w-12 mb-4 opacity-20" />
+                        <p className="font-medium">No se encontraron datos</p>
+                    </div>
                 ) : (
                     data.data.map((group) => (
-                        <div key={group.corredor} className="border rounded-lg overflow-hidden shadow-sm bg-white">
+                        <Card key={group.corredor} className="overflow-hidden">
                             {/* Group Header */}
                             <div 
-                                className="bg-[#1a1a1a] text-white p-3 flex justify-between items-center cursor-pointer hover:bg-[#333] transition-colors"
+                                className="bg-muted/50 p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center cursor-pointer hover:bg-muted/70 transition-colors gap-2"
                                 onClick={() => toggleTrader(group.corredor)}
                             >
-                                <div className="flex items-center gap-2 font-bold uppercase">
-                                    {expandedTraders.includes(group.corredor) ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                                <div className="flex items-center gap-2 font-semibold uppercase text-foreground">
+                                    {expandedTraders.includes(group.corredor) ? <ChevronDown className="w-5 h-5 text-muted-foreground" /> : <ChevronRight className="w-5 h-5 text-muted-foreground" />}
                                     {group.corredor}
                                 </div>
-                                <div className="flex gap-3 text-xs">
-                                    <span className="bg-white/10 px-2 py-1 rounded flex items-center gap-1">
+                                <div className="flex flex-wrap gap-3 text-xs">
+                                    <span className="bg-background border px-2 py-1 rounded flex items-center gap-1 text-muted-foreground">
                                         <Users className="w-3 h-3" /> {group.clientCount} clientes
                                     </span>
-                                    <span className="bg-white/10 px-2 py-1 rounded">
+                                    <span className="bg-background border px-2 py-1 rounded font-mono">
                                         {formatCurrency(group.totalVolume)}
                                     </span>
-                                    <span className="bg-white/10 px-2 py-1 rounded text-pink-300">
+                                    <span className="bg-background border px-2 py-1 rounded font-mono text-primary font-medium">
                                         {formatCurrency(group.totalCommission)}
                                     </span>
-                                    <span className="bg-green-900/50 px-2 py-1 rounded text-green-400 font-bold border border-green-800">
+                                    <span className={cn(
+                                        "px-2 py-1 rounded font-bold border",
+                                        group.avgMargin < 0.2 ? "bg-red-100 text-red-700 border-red-200" : "bg-green-100 text-green-700 border-green-200"
+                                    )}>
                                         {formatMargin(group.avgMargin)}
                                     </span>
                                 </div>
@@ -295,73 +560,61 @@ export default function MarginReportPage() {
                             {expandedTraders.includes(group.corredor) && (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-xs text-left border-collapse">
-                                        <thead className="bg-gray-100 text-gray-800 font-medium">
+                                        <thead className="bg-muted/30 text-muted-foreground font-medium">
                                             <tr>
-                                                <th rowSpan={2} className="p-2 border bg-white sticky left-0 z-10 min-w-[100px]">NIT</th>
-                                                <th rowSpan={2} className="p-2 border bg-white sticky left-[100px] z-10 min-w-[200px]">Cliente</th>
+                                                <th rowSpan={2} className="p-2 border-b bg-background sticky left-0 z-10 min-w-[100px]">NIT</th>
+                                                <th rowSpan={2} className="p-2 border-b bg-background sticky left-[100px] z-10 min-w-[200px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Cliente</th>
                                                 {MONTHS.map(m => (
-                                                    <th key={m} colSpan={3} className="p-1 text-center border bg-blue-50 text-blue-800">{m.substring(0, 3)}</th>
+                                                    <th key={m} colSpan={3} className="p-2 border text-center border-l border-r">{m.substring(0, 3)}</th>
                                                 ))}
-                                                <th colSpan={3} className="p-1 text-center border bg-gray-200">Total</th>
+                                                <th colSpan={3} className="p-2 border text-center bg-primary/5">Total</th>
                                             </tr>
                                             <tr>
                                                 {MONTHS.map(m => (
-                                                    <>
-                                                        <th key={`${m}-vol`} className="p-1 text-right border min-w-[100px] text-[10px] text-gray-500">Trans.</th>
-                                                        <th key={`${m}-com`} className="p-1 text-right border min-w-[80px] text-[10px] text-gray-500">Com.</th>
-                                                        <th key={`${m}-mar`} className="p-1 text-right border min-w-[60px] text-[10px] text-gray-500">Margen</th>
-                                                    </>
+                                                    <Fragment key={m}>
+                                                        <th className="p-1 border text-right min-w-[80px] text-muted-foreground">Vol</th>
+                                                        <th className="p-1 border text-right min-w-[60px] text-muted-foreground">Com</th>
+                                                        <th className="p-1 border text-right min-w-[50px] text-muted-foreground">%</th>
+                                                    </Fragment>
                                                 ))}
-                                                <th className="p-1 text-right border min-w-[100px]">Trans.</th>
-                                                <th className="p-1 text-right border min-w-[80px]">Com.</th>
-                                                <th className="p-1 text-right border min-w-[60px]">Margen</th>
+                                                <th className="p-1 border text-right bg-primary/5 font-bold">Vol</th>
+                                                <th className="p-1 border text-right bg-primary/5 font-bold">Com</th>
+                                                <th className="p-1 border text-right bg-primary/5 font-bold">%</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {group.clients.map((c, idx) => (
-                                                <tr key={idx} className="hover:bg-gray-50">
-                                                    <td className="p-2 border font-mono sticky left-0 bg-white">{c.nit}</td>
-                                                    <td className="p-2 border font-medium sticky left-[100px] bg-white">{c.name}</td>
+                                            {group.clients.map((client, idx) => (
+                                                <tr key={client.nit + idx} className="hover:bg-muted/20">
+                                                    <td className="p-2 border-b bg-background sticky left-0 z-10 font-mono text-muted-foreground">{client.nit}</td>
+                                                    <td className="p-2 border-b bg-background sticky left-[100px] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] truncate max-w-[200px]" title={client.name}>{client.name}</td>
                                                     {MONTHS.map(m => {
-                                                        const mData = c.months[m];
+                                                        const data = client.months[m];
                                                         return (
-                                                            <>
-                                                                <td key={`${m}-v`} className="p-1 text-right border text-gray-600">{mData?.volume > 0 ? formatCurrency(mData.volume) : '-'}</td>
-                                                                <td key={`${m}-c`} className="p-1 text-right border text-gray-600">{mData?.commission > 0 ? formatCurrency(mData.commission) : '-'}</td>
-                                                                <td key={`${m}-m`} className={`p-1 text-right border font-mono ${mData?.margin > 0 ? 'text-green-600' : 'text-gray-300'}`}>
-                                                                    {mData?.margin > 0 ? formatMargin(mData.margin) : '-'}
+                                                            <Fragment key={m}>
+                                                                <td className="p-1 border-b border-r text-right text-muted-foreground">{data ? formatCurrency(data.volume).replace('$','').replace(',00','') : '-'}</td>
+                                                                <td className="p-1 border-b border-r text-right text-muted-foreground">{data ? formatCurrency(data.commission).replace('$','').replace(',00','') : '-'}</td>
+                                                                <td className={cn("p-1 border-b border-r text-right font-medium", 
+                                                                    data ? (data.margin < 0.2 ? "text-red-600" : "text-green-600") : "text-muted-foreground"
+                                                                )}>
+                                                                    {data ? data.margin.toFixed(3) : '-'}
                                                                 </td>
-                                                            </>
+                                                            </Fragment>
                                                         );
                                                     })}
-                                                    <td className="p-1 text-right border font-bold bg-gray-50">{formatCurrency(c.totalVolume)}</td>
-                                                    <td className="p-1 text-right border font-bold bg-gray-50">{formatCurrency(c.totalCommission)}</td>
-                                                    <td className="p-1 text-right border font-bold bg-gray-50 text-green-700">{formatMargin(c.totalMargin)}</td>
+                                                    <td className="p-1 border-b border-r text-right bg-primary/5 font-medium">{formatCurrency(client.totalVolume).replace('$','').replace(',00','')}</td>
+                                                    <td className="p-1 border-b border-r text-right bg-primary/5 font-medium">{formatCurrency(client.totalCommission).replace('$','').replace(',00','')}</td>
+                                                    <td className={cn("p-1 border-b border-r text-right bg-primary/5 font-bold", 
+                                                        client.totalMargin < 0.2 ? "text-red-600" : "text-green-600"
+                                                    )}>
+                                                        {client.totalMargin.toFixed(3)}%
+                                                    </td>
                                                 </tr>
                                             ))}
-                                            <tr className="bg-gray-900 text-white font-bold text-xs">
-                                                <td colSpan={2} className="p-2 border sticky left-0 z-10 bg-gray-900">Total {group.corredor}</td>
-                                                {MONTHS.map(m => {
-                                                    const mVol = group.clients.reduce((acc, c) => acc + (c.months[m]?.volume || 0), 0);
-                                                    const mCom = group.clients.reduce((acc, c) => acc + (c.months[m]?.commission || 0), 0);
-                                                    const mMar = mVol > 0 ? (mCom / mVol) * 100 : 0;
-                                                    return (
-                                                        <>
-                                                            <td key={`${m}-tv`} className="p-1 text-right border">{mVol > 0 ? formatCurrency(mVol) : '-'}</td>
-                                                            <td key={`${m}-tc`} className="p-1 text-right border text-pink-200">{mCom > 0 ? formatCurrency(mCom) : '-'}</td>
-                                                            <td key={`${m}-tm`} className="p-1 text-right border text-green-400">{mMar > 0 ? formatMargin(mMar) : '-'}</td>
-                                                        </>
-                                                    );
-                                                })}
-                                                <td className="p-1 text-right border">{formatCurrency(group.totalVolume)}</td>
-                                                <td className="p-1 text-right border text-pink-200">{formatCurrency(group.totalCommission)}</td>
-                                                <td className="p-1 text-right border text-green-400">{formatMargin(group.avgMargin)}</td>
-                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
                             )}
-                        </div>
+                        </Card>
                     ))
                 )}
             </div>

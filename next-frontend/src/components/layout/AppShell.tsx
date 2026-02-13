@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Navbar } from "@/components/layout/Navbar";
-import { SessionExpiredModal } from "@/components/common/SessionExpiredModal";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -29,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 flex overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop Sidebar */}
       <aside
         className="hidden md:block shrink-0 transition-all duration-300 ease-in-out"
@@ -69,8 +68,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-      
-      <SessionExpiredModal />
     </div>
   );
 }

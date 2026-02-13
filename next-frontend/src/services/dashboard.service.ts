@@ -1,16 +1,18 @@
 import { DashboardSummary } from "@/types/dashboard";
-import { handleAuthError } from "@/utils/auth-helper";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
-export const getDashboardSummary = async (token: string, year: number, withGroups: boolean = true): Promise<DashboardSummary> => {
-    const res = await fetch(`${API_URL}/dashboard/summary?year=${year}&withGroups=${withGroups}`, {
+export const getDashboardSummary = async (token: string, year: number, withGroups: boolean = true, trader?: string): Promise<DashboardSummary> => {
+    let url = `${API_URL}/dashboard/summary?year=${year}&withGroups=${withGroups}`;
+    if (trader) {
+        url += `&trader=${encodeURIComponent(trader)}`;
+    }
+    
+    const res = await fetch(url, {
         headers: {
             Authorization: `Bearer ${token}`,
         },
     });
-
-    handleAuthError(res);
 
     if (!res.ok) {
         throw new Error('Failed to fetch dashboard summary');
@@ -25,8 +27,6 @@ export const getDashboardLayout = async (token: string, userId: number): Promise
             Authorization: `Bearer ${token}`,
         },
     });
-
-    handleAuthError(res);
 
     if (!res.ok) {
         throw new Error('Failed to fetch dashboard layout');
@@ -44,8 +44,6 @@ export const saveDashboardLayout = async (token: string, userId: number, layout:
         },
         body: JSON.stringify(layout),
     });
-
-    handleAuthError(res);
 
     if (!res.ok) {
         throw new Error('Failed to save dashboard layout');

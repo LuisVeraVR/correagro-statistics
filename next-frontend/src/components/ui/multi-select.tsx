@@ -84,12 +84,12 @@ export function MultiSelect({
       </Button>
 
       {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg">
-          <div className="p-2 border-b">
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-lg animate-in fade-in-0 zoom-in-95">
+          <div className="p-2 border-b border-border">
             <input
               type="text"
               placeholder="Buscar..."
-              className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-2 py-1 text-sm bg-background border border-input rounded focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -97,7 +97,7 @@ export function MultiSelect({
           </div>
           <div className="max-h-60 overflow-y-auto p-1 space-y-1">
              <div 
-                className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer"
+                className="flex items-center space-x-2 p-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
                 onClick={handleSelectAll}
              >
                  <Checkbox 
@@ -107,26 +107,26 @@ export function MultiSelect({
                  <span className="text-sm font-medium">Seleccionar Todos</span>
              </div>
             {filteredOptions.length === 0 ? (
-              <div className="py-2 text-center text-sm text-gray-500">No hay resultados.</div>
+              <div className="py-2 text-center text-sm text-muted-foreground">No hay resultados.</div>
             ) : (
               filteredOptions.map((option) => (
                 <div
                   key={option.value}
-                  className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer"
+                  className="flex items-center space-x-2 p-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
                   onClick={() => handleSelect(option.value)}
                 >
                   <Checkbox
                     checked={selected.includes(option.value)}
                     onCheckedChange={() => handleSelect(option.value)}
                   />
-                  <span className="text-sm truncate" title={option.label}>{option.label}</span>
+                  <span className="text-sm break-words leading-tight" title={option.label}>{option.label}</span>
                 </div>
               ))
             )}
           </div>
           {selected.length > 0 && (
-              <div className="p-2 border-t text-center">
-                  <button onClick={handleClear} className="text-xs text-red-500 hover:underline">Limpiar selección</button>
+              <div className="p-2 border-t border-border text-center">
+                  <button onClick={handleClear} className="text-xs text-destructive hover:underline">Limpiar selección</button>
               </div>
           )}
         </div>

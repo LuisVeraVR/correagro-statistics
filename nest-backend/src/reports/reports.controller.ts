@@ -8,8 +8,8 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('clients')
-  async getClients(@Query('year') year: number) {
-    return this.reportsService.getClients(year);
+  async getClients(@Query('year') year: number, @Request() req) {
+    return this.reportsService.getClients(year, req.user);
   }
 
   @Get('orfs')

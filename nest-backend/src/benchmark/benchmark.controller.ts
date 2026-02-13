@@ -23,8 +23,14 @@ export class BenchmarkController {
   }
 
   @Get('compare')
-  async getComparison(@Query('ids') ids: string, @Query('period') period: string) {
-    const traders = ids ? ids.split(',').map(s => s.trim()) : [];
+  async getComparison(@Query('ids') ids: string, @Query('period') period: string, @Request() req) {
+    let traders = ids ? ids.split(',').map(s => s.trim()) : [];
+
+    // RBAC: Traders can only compare themselves (or see their own data in this view)
+    if (req.user.role === 'trader' && req.user.traderName) {
+        traders = [req.user.traderName];
+    }
+
     const periodMonths = period ? Number(period) : 12;
     return this.benchmarkService.getComparison(traders, periodMonths);
   }

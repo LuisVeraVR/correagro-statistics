@@ -16,10 +16,10 @@ export class TransactionsService {
       throw new BadRequestException('No file uploaded');
     }
 
-    const workbook = XLSX.read(file.buffer, { type: 'buffer', cellDates: true });
+    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(sheet, { dateNF: 'yyyy-mm-dd' });
+    const data = XLSX.utils.sheet_to_json(sheet);
 
     if (!data.length) {
       throw new BadRequestException('Empty file');
@@ -27,39 +27,13 @@ export class TransactionsService {
 
     const transactionsToInsert = data.map((row: any) => {
       // Map Excel columns to DB schema
+      // This mapping assumes standard column names from the old system or needs adjustment
+      // Assuming headers: FECHA, RUEDA, NIT, NOMBRE, CORREDOR, PRODUCTO, etc.
       
-      let fecha: Date;
-      const rawFecha = row['FECHA'];
-
-      if (rawFecha instanceof Date) {
-        fecha = rawFecha;
-      } else if (typeof rawFecha === 'string') {
-        // Try to parse "DD/MM/YYYY" or "YYYY-MM-DD"
-        if (rawFecha.includes('/')) {
-            const parts = rawFecha.split('/');
-            // Assume DD/MM/YYYY
-            if (parts.length === 3) {
-                fecha = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-            } else {
-                fecha = new Date(rawFecha);
-            }
-        } else {
-            fecha = new Date(rawFecha);
-        }
-      } else if (typeof rawFecha === 'number') {
-        // Handle Excel serial date manually if cellDates didn't work for some reason
-        // (val - 25569) * 86400 * 1000
-        fecha = new Date((rawFecha - 25569) * 86400 * 1000);
-      } else {
+      let fecha = row['FECHA'] ? new Date(row['FECHA']) : new Date();
+      if (isNaN(fecha.getTime())) {
         fecha = new Date();
       }
-
-      if (isNaN(fecha.getTime())) {
-        fecha = new Date(); // Fallback to now if invalid
-      }
-      
-      // Adjust for timezone offset if needed (Excel dates are often local 00:00)
-      // But we will store as is.
       
       const parseNumber = (val: any) => {
         const n = Number(val);
@@ -82,7 +56,7 @@ export class TransactionsService {
         comiPorcentual: parseDecimal(row['COMI_PORCENTUAL']),
         ciudad: row['CIUDAD'] || '',
         fecha: fecha,
-        ruedaNo: parseNumber(row['RUEDA_NO'] || row['RUEDA']), // Support both RUEDA_NO and RUEDA
+        ruedaNo: parseNumber(row['RUEDA']),
         negociado: parseDecimal(row['NEGOCIADO']),
         comiBna: parseDecimal(row['COMI_BNA']),
         campo209: parseDecimal(row['CAMPO209']),

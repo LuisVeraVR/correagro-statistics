@@ -2,31 +2,47 @@ import { Injectable, Inject } from '@nestjs/common';
 import { DRIZZLE } from '../drizzle/drizzle.module';
 import * as schema from '../drizzle/schema';
 import { MySql2Database } from 'drizzle-orm/mysql2';
-import { sql, eq, desc, asc, and, inArray, notInArray } from 'drizzle-orm';
+import { sql, eq, desc, and, inArray, notInArray } from 'drizzle-orm';
+import { TradersService } from '../traders/traders.service';
 
 @Injectable()
 export class DashboardService {
-  constructor(@Inject(DRIZZLE) private db: MySql2Database<typeof schema>) {}
+  constructor(
+    @Inject(DRIZZLE) private db: MySql2Database<typeof schema>,
+    private tradersService: TradersService
+  ) {}
 
   async getSummary(year: number, withGroups: boolean, user?: any) {
     const transactions = schema.orfsTransactions;
-    const whereClause = await this.buildWhereClause(year, user, withGroups);
+    
+    let whereClause = eq(transactions.year, year);
+    if (user && user.role === 'trader' && user.traderName) {
+        const aliases = await this.getTraderAliases([user.traderName.trim()]);
+        console.log(`[DashboardService] Trader: ${user.traderName}, Aliases found: ${JSON.stringify(aliases)}`);
+        whereClause = and(eq(transactions.year, year), inArray(transactions.corredor, aliases))!;
+    } else if (!withGroups) {
+        // Admin filter: Exclude special groups
+        whereClause = and(
+          eq(transactions.year, year),
+          notInArray(transactions.corredor, ['Grupo BIOS', 'Grupo Bavaria'])
+        )!;
+    }
 
-    // Total Volume & Commission & Transactions
-    const totalsResult = await this.db
-      .select({ 
-        volume: sql<number>`sum(${transactions.negociado})`,
-        commission: sql<number>`sum(${transactions.comiCorr})`,
-        count: sql<number>`count(*)`,
-        ruedas: sql<number>`count(distinct ${transactions.ruedaNo})`
+    // KPIs
+    const kpisResult = await this.db
+      .select({
+        totalVolume: sql<number>`sum(${transactions.negociado})`,
+        totalCommission: sql<number>`sum(${transactions.comiCorr})`,
+        totalTransactions: sql<number>`count(*)`,
+        totalRuedas: sql<number>`count(distinct ${transactions.ruedaNo})`
       })
       .from(transactions)
       .where(whereClause);
     
-    const total_volume = Number(totalsResult[0]?.volume || 0);
-    const total_commission = Number(totalsResult[0]?.commission || 0);
-    const total_transactions = Number(totalsResult[0]?.count || 0);
-    const total_ruedas = Number(totalsResult[0]?.ruedas || 0);
+    const total_volume = Number(kpisResult[0]?.totalVolume || 0);
+    const total_commission = Number(kpisResult[0]?.totalCommission || 0);
+    const total_transactions = Number(kpisResult[0]?.totalTransactions || 0);
+    const total_ruedas = Number(kpisResult[0]?.totalRuedas || 0);
 
     // Active Traders (Unique Corredores)
     const activeTradersResult = await this.db
@@ -123,86 +139,8 @@ export class DashboardService {
     };
   }
 
-  async getRanking(type: string, order: 'asc' | 'desc', year: number, user: any, withGroups: boolean) {
-    const transactions = schema.orfsTransactions;
-    const whereClause = await this.buildWhereClause(year, user, withGroups);
-    
-    let groupByField;
-    let sumField;
-
-    switch (type) {
-        case 'traders_volume':
-            groupByField = transactions.corredor;
-            sumField = transactions.negociado;
-            break;
-        case 'traders_commission':
-            groupByField = transactions.corredor;
-            sumField = transactions.comiCorr;
-            break;
-        case 'clients_volume':
-            groupByField = transactions.nombre;
-            sumField = transactions.negociado;
-            break;
-        case 'clients_commission':
-            groupByField = transactions.nombre;
-            sumField = transactions.comiCorr;
-            break;
-        default:
-            throw new Error('Invalid ranking type');
-    }
-
-    const orderByClause = order === 'asc' ? asc(sql`sum(${sumField})`) : desc(sql`sum(${sumField})`);
-
-    const result = await this.db
-        .select({
-            name: groupByField,
-            value: sql<number>`sum(${sumField})`
-        })
-        .from(transactions)
-        .where(whereClause)
-        .groupBy(groupByField)
-        .orderBy(orderByClause)
-        .limit(5);
-
-    return result.map(r => ({ name: r.name, value: Number(r.value) }));
-  }
-
-  private async buildWhereClause(year: number, user: any, withGroups: boolean = true) {
-    const transactions = schema.orfsTransactions;
-    let whereClause = eq(transactions.year, year);
-
-    if (user && user.role === 'trader' && user.traderName) {
-        const traderRecord = await this.db
-          .select()
-          .from(schema.traders)
-          .where(eq(schema.traders.nombre, user.traderName))
-          .limit(1);
-
-        let allNames = [user.traderName];
-
-        if (traderRecord.length > 0) {
-            const traderId = traderRecord[0].id;
-            const additionalRecords = await this.db
-              .select({ name: schema.traderAdicionales.nombreAdicional })
-              .from(schema.traderAdicionales)
-              .where(eq(schema.traderAdicionales.traderId, traderId));
-            
-            if (additionalRecords.length > 0) {
-              allNames = [...allNames, ...additionalRecords.map(r => r.name)];
-            }
-        }
-        
-        whereClause = and(eq(transactions.year, year), inArray(transactions.corredor, allNames))!;
-    } else if (!withGroups) {
-        whereClause = and(
-          eq(transactions.year, year),
-          notInArray(transactions.corredor, ['Grupo BIOS', 'Grupo Bavaria'])
-        )!;
-    }
-    return whereClause;
-  }
-
   async getLayout(userId: number) {
+    // Mock layout retrieval
     return {
       userId,
       widgets: [
@@ -215,5 +153,20 @@ export class DashboardService {
   async saveLayout(userId: number, layout: any) {
     console.log(`Saving layout for user ${userId}:`, layout);
     return { success: true };
+  }
+
+  private async getTraderAliases(traderNames: string[]): Promise<string[]> {
+    if (traderNames.length === 0) return [];
+    
+    // Find trader IDs
+    const traders = await this.db.select().from(schema.traders).where(inArray(schema.traders.nombre, traderNames));
+    const traderIds = traders.map(t => t.id);
+    const foundNames = traders.map(t => t.nombre);
+    
+    if (traderIds.length === 0) return traderNames;
+
+    // Find aliases
+    const aliases = await this.tradersService.getAdicionalesByTraderIds(traderIds);
+    return [...foundNames, ...aliases.map(a => a.nombreAdicional)];
   }
 }

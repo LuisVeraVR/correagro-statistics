@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
+import { FullScreenLoader } from "@/components/ui/full-screen-loader";
 
 interface NavbarProps {
   collapsed: boolean;
@@ -49,6 +50,7 @@ export function Navbar({ collapsed, onToggleSidebar, onOpenMobileSidebar }: Navb
   const { data: session } = useSession();
   const pathname = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const pageName = getBreadcrumb(pathname);
@@ -59,6 +61,13 @@ export function Navbar({ collapsed, onToggleSidebar, onOpenMobileSidebar }: Navb
       : role === "admin"
         ? "Administrador"
         : role.charAt(0).toUpperCase() + role.slice(1);
+
+  const handleSignOut = async () => {
+    setLoggingOut(true);
+    // Add a delay to ensure the loader is rendered and visible to the user
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    await signOut();
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -73,6 +82,7 @@ export function Navbar({ collapsed, onToggleSidebar, onOpenMobileSidebar }: Navb
 
   return (
     <header className="flex h-14 shrink-0 items-center border-b border-border bg-card px-4 gap-3">
+      {loggingOut && <FullScreenLoader text="Cerrando sesión..." />}
       {/* Desktop sidebar toggle */}
       <button
         onClick={onToggleSidebar}
@@ -161,7 +171,7 @@ export function Navbar({ collapsed, onToggleSidebar, onOpenMobileSidebar }: Navb
             </div>
             <div className="p-1.5">
               <button
-                onClick={() => signOut()}
+                onClick={handleSignOut}
                 className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10"
               >
                 <LogOut className="h-4 w-4" />

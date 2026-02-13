@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   ShieldCheck,
 } from "lucide-react";
+import { FullScreenLoader } from "@/components/ui/full-screen-loader";
 
 type ViewState = "login" | "request-code" | "reset-password" | "success";
 
@@ -26,6 +27,7 @@ export default function LoginPage() {
 
   // Login state
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [errorKey, setErrorKey] = useState(0);
@@ -76,19 +78,27 @@ export default function LoginPage() {
           "Credenciales invalidas. Verifica tu usuario y contrasena."
         );
         setErrorKey((k) => k + 1);
+        setLoading(false);
       } else if (result?.ok) {
         console.log("[v0] signIn success, redirecting to dashboard");
+        setSuccess(true);
+        // Add a delay to show the loader
+        await new Promise(resolve => setTimeout(resolve, 2000));
         router.push("/dashboard");
         router.refresh();
       } else if (result?.url) {
         // NextAuth v5 beta sometimes returns url on success
         console.log("[v0] signIn returned url:", result.url);
+        setSuccess(true);
+        // Add a delay to show the loader
+        await new Promise(resolve => setTimeout(resolve, 2000));
         router.push("/dashboard");
         router.refresh();
       } else {
         console.log("[v0] signIn returned unexpected result:", result);
         setError("Error inesperado al iniciar sesion.");
         setErrorKey((k) => k + 1);
+        setLoading(false);
       }
     } catch (err: any) {
       console.log("[v0] signIn caught exception:", err?.message || err, "type:", err?.type || err?.name);
@@ -98,8 +108,6 @@ export default function LoginPage() {
       } else {
         setError("Error al iniciar sesion. Verifica tus credenciales.");
       }
-      setErrorKey((k) => k + 1);
-    } finally {
       setLoading(false);
     }
   }
@@ -252,7 +260,7 @@ export default function LoginPage() {
                     id="email"
                     name="email"
                     type="text"
-                    placeholder="admin"
+                    placeholder="Correo"
                     required
                     disabled={loading}
                     className="pl-10 h-11 bg-card border-border transition-shadow duration-300 focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]"
@@ -695,6 +703,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen">
+      {(loading && success) && <FullScreenLoader text="Iniciando sesión..." />}
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between bg-[hsl(150,10%,8%)] p-12 relative overflow-hidden">
         {/* Background Pattern */}

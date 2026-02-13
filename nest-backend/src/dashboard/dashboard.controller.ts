@@ -9,23 +9,22 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('summary')
-  async getDashboardSummary(@Query('year') year: number, @Query('withGroups') withGroupsStr: string, @Request() req) {
-    const user = req.user;
-    const withGroups = withGroupsStr !== 'false'; // Default to true
-    return this.dashboardService.getSummary(year || new Date().getFullYear(), withGroups, user);
-  }
-
-  @Get('ranking')
-  async getRanking(
-    @Query('type') type: string,
-    @Query('order') order: 'asc' | 'desc',
-    @Query('year') year: number,
-    @Query('withGroups') withGroupsStr: string,
+  async getDashboardSummary(
+    @Query('year') year: number, 
+    @Query('withGroups') withGroupsStr: string, 
+    @Query('trader') trader: string,
     @Request() req
   ) {
     const user = req.user;
-    const withGroups = withGroupsStr !== 'false';
-    return this.dashboardService.getRanking(type, order, year || new Date().getFullYear(), user, withGroups);
+    const withGroups = withGroupsStr !== 'false'; // Default to true
+    
+    // Allow overriding trader name from query param (useful for debugging or specific filtering)
+    // If user is trader, they should only see their own data, but we can use the query param to ensure we use the name the frontend is sending
+    if (user.role === 'trader' && trader) {
+        user.traderName = trader;
+    }
+
+    return this.dashboardService.getSummary(year || new Date().getFullYear(), withGroups, user);
   }
 
   @Get('layout')

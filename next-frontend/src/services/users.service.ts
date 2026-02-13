@@ -1,5 +1,4 @@
 import { CreateUserDto, UpdateUserDto, User } from "@/types/user";
-import { handleAuthError } from "@/utils/auth-helper";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -9,7 +8,6 @@ export const getUsers = async (token: string): Promise<User[]> => {
       Authorization: `Bearer ${token}`,
     },
   });
-  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch users');
   return res.json();
 };
@@ -20,7 +18,6 @@ export const getUser = async (token: string, id: number): Promise<User> => {
       Authorization: `Bearer ${token}`,
     },
   });
-  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to fetch user');
   return res.json();
 };
@@ -34,7 +31,6 @@ export const createUser = async (token: string, data: CreateUserDto): Promise<vo
     },
     body: JSON.stringify(data),
   });
-  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to create user');
 };
 
@@ -47,7 +43,6 @@ export const updateUser = async (token: string, id: number, data: UpdateUserDto)
     },
     body: JSON.stringify(data),
   });
-  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to update user');
 };
 
@@ -58,6 +53,5 @@ export const deleteUser = async (token: string, id: number): Promise<void> => {
       Authorization: `Bearer ${token}`,
     },
   });
-  handleAuthError(res);
   if (!res.ok) throw new Error('Failed to delete user');
 };

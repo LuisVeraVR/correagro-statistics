@@ -86,7 +86,7 @@ export default function DashboardPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between rounded-xl border border-border bg-card p-5">
         <div className="space-y-1">
           <h1 className="text-xl font-bold tracking-tight text-foreground">
-            Dashboard Administrativo
+            {session?.user?.role === 'trader' ? 'Mi Dashboard' : 'Dashboard Administrativo'}
           </h1>
           <p className="text-sm text-muted-foreground">
             Bienvenido,{" "}
@@ -176,7 +176,7 @@ export default function DashboardPage() {
       )}
 
       {/* Rankings */}
-      <RankingGrid rankings={data.rankings} widgets={widgets} year={year} withGroups={withGroups} />
+      <RankingGrid rankings={data.rankings} widgets={widgets} />
 
       {/* Monthly Summary Table */}
       {widgets.resumen_mensual && (

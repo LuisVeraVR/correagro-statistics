@@ -1,5 +1,4 @@
 import { useAuth } from '@/hooks/useAuth';
-import { handleAuthError } from "@/utils/auth-helper";
 
 export interface OrfsReportData {
     corredor: string;
@@ -45,7 +44,7 @@ export interface MarginReportData {
     }[];
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 export const getOrfsReport = async (token: string, year: number, month: string = 'all', trader: string | string[] = 'all', client: string | string[] = 'all', withGroups: boolean = true): Promise<OrfsReportData[]> => {
     const traderStr = Array.isArray(trader) ? trader.join(',') : trader;
@@ -64,8 +63,6 @@ export const getOrfsReport = async (token: string, year: number, month: string =
             Authorization: `Bearer ${token}`
         }
     });
-
-    handleAuthError(res);
 
     if (!res.ok) throw new Error('Failed to fetch ORFS report');
     return res.json();
@@ -89,8 +86,6 @@ export const getMarginReport = async (token: string, year: number, month: string
         }
     });
 
-    handleAuthError(res);
-
     if (!res.ok) throw new Error('Failed to fetch Margin report');
     return res.json();
 };
@@ -101,7 +96,6 @@ export const getClients = async (token: string, year: number): Promise<string[]>
             Authorization: `Bearer ${token}`
         }
     });
-    handleAuthError(res);
     if (!res.ok) throw new Error('Failed to fetch clients');
     return res.json();
 };
@@ -125,6 +119,17 @@ export interface RuedasReportData {
         totalCommission: number;
         avgMargin: number;
         clientCount: number;
+        wheels: {
+            ruedaNo: number;
+            fecha: string;
+            volume: number;
+            commission: number;
+            clients: {
+                name: string;
+                volume: number;
+                commission: number;
+            }[];
+        }[];
     }[];
 }
 

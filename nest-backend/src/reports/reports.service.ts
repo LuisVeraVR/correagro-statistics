@@ -70,25 +70,68 @@ export class ReportsService {
          kpis.avgMargin = (kpis.totalCommission / kpis.totalVolume) * 100;
      }
 
-     // Data grouped by Trader
+     // Detailed Data
      const rawData = await this.db
         .select({
             corredor: transactions.corredor,
+            ruedaNo: transactions.ruedaNo,
+            fecha: transactions.fecha,
+            cliente: transactions.nombre,
             volumen: sql<number>`sum(${transactions.negociado})`,
-            comision: sql<number>`sum(${transactions.comiCorr})`,
-            clientsCount: sql<number>`count(distinct ${transactions.nombre})`
+            comision: sql<number>`sum(${transactions.comiCorr})`
         })
         .from(transactions)
         .where(whereClause)
-        .groupBy(transactions.corredor)
-        .orderBy(desc(sql`sum(${transactions.negociado})`));
+        .groupBy(transactions.corredor, transactions.ruedaNo, transactions.fecha, transactions.nombre)
+        .orderBy(transactions.corredor, desc(transactions.ruedaNo), transactions.nombre);
 
-     const data = rawData.map(row => ({
-         corredor: row.corredor,
-         totalVolume: Number(row.volumen),
-         totalCommission: Number(row.comision),
-         avgMargin: Number(row.volumen) > 0 ? (Number(row.comision) / Number(row.volumen)) * 100 : 0,
-         clientCount: Number(row.clientsCount)
+     // Grouping
+     const groupedData = {};
+     
+     rawData.forEach(row => {
+        if (!groupedData[row.corredor]) {
+            groupedData[row.corredor] = {
+                corredor: row.corredor,
+                totalVolume: 0,
+                totalCommission: 0,
+                clientCount: 0, // Unique clients
+                clientsSet: new Set(),
+                wheels: {}
+            };
+        }
+        
+        const trader = groupedData[row.corredor];
+        trader.totalVolume += Number(row.volumen);
+        trader.totalCommission += Number(row.comision);
+        trader.clientsSet.add(row.cliente);
+
+        if (!trader.wheels[row.ruedaNo]) {
+            trader.wheels[row.ruedaNo] = {
+                ruedaNo: row.ruedaNo,
+                fecha: row.fecha,
+                volume: 0,
+                commission: 0,
+                clients: []
+            };
+        }
+        
+        const wheel = trader.wheels[row.ruedaNo];
+        wheel.volume += Number(row.volumen);
+        wheel.commission += Number(row.comision);
+        wheel.clients.push({
+            name: row.cliente,
+            volume: Number(row.volumen),
+            commission: Number(row.comision)
+        });
+     });
+
+     const data = Object.values(groupedData).map((t: any) => ({
+        corredor: t.corredor,
+        totalVolume: t.totalVolume,
+        totalCommission: t.totalCommission,
+        avgMargin: t.totalVolume > 0 ? (t.totalCommission / t.totalVolume) * 100 : 0,
+        clientCount: t.clientsSet.size,
+        wheels: Object.values(t.wheels).sort((a: any, b: any) => b.ruedaNo - a.ruedaNo)
      }));
 
      return { kpis, data };
@@ -180,12 +223,25 @@ export class ReportsService {
     return and(...conditions);
   }
 
-  async getClients(year: number) {
+  async getClients(year: number, user: any) {
     const transactions = schema.orfsTransactions;
+    const conditions = [eq(transactions.year, year)];
+
+    // RBAC
+    let allowedTraders: string[] = [];
+    if (user.role === 'trader' && user.traderName) {
+        allowedTraders = [user.traderName];
+    }
+
+    if (allowedTraders.length > 0) {
+        const aliases = await this.getTraderAliases(allowedTraders);
+        conditions.push(inArray(transactions.corredor, aliases));
+    }
+
     const result = await this.db
         .selectDistinct({ nombre: transactions.nombre })
         .from(transactions)
-        .where(eq(transactions.year, year))
+        .where(and(...conditions))
         .orderBy(transactions.nombre);
     return result.map(r => r.nombre);
   }
@@ -255,7 +311,7 @@ export class ReportsService {
     const kpisResult = await this.db
         .select({
             totalVolume: sql<number>`sum(${transactions.negociado})`,
-            totalCommission: sql<number>`sum(${transactions.comiBna})`,
+            totalCommission: sql<number>`sum(${transactions.comiCorr})`,
             uniqueClients: sql<number>`count(distinct ${transactions.nombre})`
         })
         .from(transactions)
@@ -280,7 +336,7 @@ export class ReportsService {
         nit: transactions.nit,
         mes: transactions.mes,
         volumen: sql<number>`sum(${transactions.negociado})`,
-        comision: sql<number>`sum(${transactions.comiBna})`
+        comision: sql<number>`sum(${transactions.comiCorr})`
       })
       .from(transactions)
       .where(whereClause)
